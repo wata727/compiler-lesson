@@ -1,7 +1,30 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
+
+typedef struct {
+  void **data;
+  int capacity;
+  int len;
+} Vector;
+
+Vector *new_vector() {
+  Vector *vec = malloc(sizeof(Vector));
+  vec->data = malloc(sizeof(void *) * 16);
+  vec->capacity = 16;
+  vec->len = 0;
+  return vec;
+}
+
+void vec_push(Vector *vec, void *elem) {
+  if (vec->capacity == vec->len) {
+    vec->capacity *= 2;
+    vec->data = realloc(vec->data, sizeof(void *) * vec->capacity);
+  }
+  vec->data[vec->len++] = elem;
+}
 
 enum {
   TK_NUM = 256,
@@ -14,10 +37,9 @@ typedef struct {
   char *input;
 } Token;
 
-Token tokens[100];
+Vector *vec;
 
 void tokenize(char *p) {
-  int i = 0;
   while (*p) {
     if (isspace(*p)) {
       p++;
@@ -25,18 +47,20 @@ void tokenize(char *p) {
     }
 
     if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')') {
-      tokens[i].ty = *p;
-      tokens[i].input = p;
-      i++;
+      Token *tok = malloc(sizeof(Token));
+      tok->ty = *p;
+      tok->input = p;
+      vec_push(vec, tok);
       p++;
       continue;
     }
 
     if (isdigit(*p)) {
-      tokens[i].ty = TK_NUM;
-      tokens[i].input = p;
-      tokens[i].val = strtol(p, &p, 10);
-      i++;
+      Token *tok = malloc(sizeof(Token));
+      tok->ty = TK_NUM;
+      tok->input = p;
+      tok->val = strtol(p, &p, 10);
+      vec_push(vec, tok);
       continue;
     }
 
@@ -44,8 +68,10 @@ void tokenize(char *p) {
     exit(1);
   }
 
-  tokens[i].ty = TK_EOF;
-  tokens[i].input = p;
+  Token *tok = malloc(sizeof(Token));
+  tok->ty = TK_EOF;
+  tok->input = p;
+  vec_push(vec, tok);
 }
 
 void error(char *msg, char *input) {
@@ -82,7 +108,8 @@ Node *new_node_num(int val) {
 }
 
 int consume(int ty) {
-  if (tokens[pos].ty != ty) {
+  Token *tok = vec->data[pos];
+  if (tok->ty != ty) {
     return 0;
   }
   pos++;
@@ -125,16 +152,19 @@ Node *term() {
   if (consume('(')) {
     Node *node = add();
     if (!consume(')')) {
-      error("Missing closing parenthesis: %s", tokens[pos].input);
+      Token *tok = vec->data[pos];
+      error("Missing closing parenthesis: %s", tok->input);
     }
     return node;
   }
 
-  if (tokens[pos].ty == TK_NUM) {
-    return new_node_num(tokens[pos++].val);
+  Token *tok = vec->data[pos];
+  if (tok->ty == TK_NUM) {
+    pos++;
+    return new_node_num(tok->val);
   }
 
-  error("Unexpected token found: %s", tokens[pos].input);
+  error("Unexpected token found: %s", tok->input);
 }
 
 void gen(Node *node) {
@@ -167,11 +197,41 @@ void gen(Node *node) {
   printf("  push rax\n");
 }
 
+int expect(int line, int expected, int acutual) {
+  if (expected == acutual) {
+    return 0;
+  }
+  fprintf(stderr, "%d: %d expected, but got %d\n", line, expected, acutual);
+  exit(1);
+}
+
+void runtest() {
+  Vector *vec = new_vector();
+  expect(__LINE__, 0, vec->len);
+
+  for (int i = 0; i < 100; i++) {
+    vec_push(vec, (void *)(intptr_t)i);
+  }
+
+  expect(__LINE__, 100, vec->len);
+  expect(__LINE__, 0, (intptr_t)vec->data[0]);
+  expect(__LINE__, 50, (intptr_t)vec->data[50]);
+  expect(__LINE__, 99, (intptr_t)vec->data[99]);
+
+  printf("OK\n");
+}
+
 int main(int argc, char **argv) {
   if (argc != 2) {
     fprintf(stderr, "Argument count mismatch\n");
     return 1;
   }
+  if (strcmp(argv[1], "-test") == 0) {
+    runtest();
+    return 0;
+  }
+
+  vec = new_vector();
 
   tokenize(argv[1]);
   Node *node = add();

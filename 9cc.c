@@ -27,7 +27,8 @@ void vec_push(Vector *vec, void *elem) {
 }
 
 enum {
-  TK_NUM = 256,
+  TK_RESERVED,
+  TK_NUM,
   TK_EOF,
 };
 
@@ -35,9 +36,14 @@ typedef struct {
   int ty;
   int val;
   char *input;
+  int len;
 } Token;
 
 Vector *vec;
+
+int startswith(char *p, char *q) {
+  return memcmp(p, q, strlen(q)) == 0;
+}
 
 void tokenize(char *p) {
   while (*p) {
@@ -46,10 +52,21 @@ void tokenize(char *p) {
       continue;
     }
 
-    if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')') {
+    if (startswith(p, "==") || startswith(p, "!=") || startswith(p, "<=") || startswith(p, ">=")) {
       Token *tok = malloc(sizeof(Token));
-      tok->ty = *p;
+      tok->ty = TK_RESERVED;
       tok->input = p;
+      tok->len= 2;
+      vec_push(vec, tok);
+      p += 2;
+      continue;
+    }
+
+    if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')' || *p == '<' || *p == '>') {
+      Token *tok = malloc(sizeof(Token));
+      tok->ty = TK_RESERVED;
+      tok->input = p;
+      tok->len = 1;
       vec_push(vec, tok);
       p++;
       continue;
@@ -59,7 +76,9 @@ void tokenize(char *p) {
       Token *tok = malloc(sizeof(Token));
       tok->ty = TK_NUM;
       tok->input = p;
+      char *q = p;
       tok->val = strtol(p, &p, 10);
+      tok->len = p - q;
       vec_push(vec, tok);
       continue;
     }
@@ -71,6 +90,7 @@ void tokenize(char *p) {
   Token *tok = malloc(sizeof(Token));
   tok->ty = TK_EOF;
   tok->input = p;
+  tok->len = 0;
   vec_push(vec, tok);
 }
 
@@ -82,7 +102,15 @@ void error(char *msg, char *input) {
 int pos = 0;
 
 enum {
-  ND_NUM = 256,
+  ND_ADD,
+  ND_SUB,
+  ND_MUL,
+  ND_DIV,
+  ND_EQ,
+  ND_NE,
+  ND_LT,
+  ND_LE,
+  ND_NUM,
 };
 
 typedef struct Node {
@@ -107,28 +135,67 @@ Node *new_node_num(int val) {
   return node;
 }
 
-int consume(int ty) {
+int consume(char *op) {
   Token *tok = vec->data[pos];
-  if (tok->ty != ty) {
+  if (tok->ty != TK_RESERVED || strlen(op) != tok->len || memcmp(tok->input, op, tok->len)) {
     return 0;
   }
   pos++;
   return 1;
 }
 
+Node *expr();
+Node *equality();
+Node *relational();
 Node *add();
 Node *mul();
 Node *unary();
 Node *term();
 
+Node *expr() {
+  return equality();
+}
+
+Node *equality() {
+  Node *node = relational();
+
+  for (;;) {
+    if (consume("==")) {
+      node = new_node(ND_EQ, node, relational());
+    } else if (consume("!=")) {
+      node = new_node(ND_NE, node, relational());
+    } else {
+      return node;
+    }
+  }
+}
+
+Node *relational() {
+  Node *node = add();
+
+  for (;;) {
+    if (consume("<")) {
+      node = new_node(ND_LT, node, add());
+    } else if (consume("<=")) {
+      node = new_node(ND_LE, node, add());
+    } else if (consume(">")) {
+      node = new_node(ND_LT, add(), node);
+    } else if (consume(">=")) {
+      node = new_node(ND_LE, add(), node);
+    } else {
+      return node;
+    }
+  }
+}
+
 Node *add() {
   Node *node = mul();
 
   for (;;) {
-    if (consume('+')) {
-      node = new_node('+', node, mul());
-    } else if (consume('-')) {
-      node = new_node('-', node, mul());
+    if (consume("+")) {
+      node = new_node(ND_ADD, node, mul());
+    } else if (consume("-")) {
+      node = new_node(ND_SUB, node, mul());
     } else {
       return node;
     }
@@ -139,10 +206,10 @@ Node *mul() {
   Node *node = unary();
 
   for (;;) {
-    if (consume('*')) {
-      node = new_node('*', node, unary());
-    } else if (consume('/')) {
-      node = new_node('/', node, unary());
+    if (consume("*")) {
+      node = new_node(ND_MUL, node, unary());
+    } else if (consume("/")) {
+      node = new_node(ND_DIV, node, unary());
     } else {
       return node;
     }
@@ -150,17 +217,17 @@ Node *mul() {
 }
 
 Node *unary() {
-  if (consume('+'))
+  if (consume("+"))
     return term();
-  if (consume('-'))
-    return new_node('-', new_node_num(0), term());
+  if (consume("-"))
+    return new_node(ND_SUB, new_node_num(0), term());
   return term();
 }
 
 Node *term() {
-  if (consume('(')) {
+  if (consume("(")) {
     Node *node = add();
-    if (!consume(')')) {
+    if (!consume(")")) {
       Token *tok = vec->data[pos];
       error("Missing closing parenthesis: %s", tok->input);
     }
@@ -189,18 +256,39 @@ void gen(Node *node) {
   printf("  pop rax\n");
 
   switch (node->ty) {
-    case '+':
+    case ND_ADD:
       printf("  add rax, rdi\n");
       break;
-    case '-':
+    case ND_SUB:
       printf("  sub rax, rdi\n");
       break;
-    case '*':
+    case ND_MUL:
       printf("  mul rdi\n");
       break;
-    case '/':
+    case ND_DIV:
       printf("  mov rdx, 0\n");
       printf("  div rdi\n");
+      break;
+    case ND_EQ:
+      printf("  cmp rax, rdi\n");
+      printf("  sete al\n");
+      printf("  movzb rax, al\n");
+      break;
+    case ND_NE:
+      printf("  cmp rax, rdi\n");
+      printf("  setne al\n");
+      printf("  movzb rax, al\n");
+      break;
+    case ND_LT:
+      printf("  cmp rax, rdi\n");
+      printf("  setl al\n");
+      printf("  movzb rax, al\n");
+      break;
+    case ND_LE:
+      printf("  cmp rax, rdi\n");
+      printf("  setle al\n");
+      printf("  movzb rax, al\n");
+      break;
   }
 
   printf("  push rax\n");
@@ -243,7 +331,7 @@ int main(int argc, char **argv) {
   vec = new_vector();
 
   tokenize(argv[1]);
-  Node *node = add();
+  Node *node = expr();
 
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");

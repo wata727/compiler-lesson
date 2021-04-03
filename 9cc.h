@@ -15,6 +15,7 @@ void vec_push(Vector *vec, void *elem);
 
 enum {
   TK_RESERVED,
+  TK_IDENT,
   TK_NUM,
   TK_EOF,
 };
@@ -39,6 +40,8 @@ enum {
   ND_NE,
   ND_LT,
   ND_LE,
+  ND_ASSIGN,
+  ND_LVAR,
   ND_NUM,
 };
 
@@ -47,12 +50,18 @@ typedef struct Node {
   struct Node *lhs;
   struct Node *rhs;
   int val;
+  int offset;
 } Node;
 
 Node *new_node(int ty, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
+Node *new_node_lvar(char *input);
 int consume(char *op);
+int at_eof();
+void program();
+Node *stmt();
 Node *expr();
+Node *assign();
 Node *equality();
 Node *relational();
 Node *add();

@@ -39,9 +39,19 @@ void tokenize(char *p) {
       continue;
     }
 
-    if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')' || *p == '<' || *p == '>') {
+    if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')' || *p == '<' || *p == '>' || *p == ';' || *p == '=') {
       Token *tok = malloc(sizeof(Token));
       tok->ty = TK_RESERVED;
+      tok->input = p;
+      tok->len = 1;
+      vec_push(vec, tok);
+      p++;
+      continue;
+    }
+
+    if ('a' <= *p && *p <= 'z') {
+      Token *tok = malloc(sizeof(Token));
+      tok->ty = TK_IDENT;
       tok->input = p;
       tok->len = 1;
       vec_push(vec, tok);
@@ -93,6 +103,13 @@ Node *new_node_num(int val) {
   return node;
 }
 
+Node *new_node_lvar(char *input) {
+  Node *node = malloc(sizeof(Node));
+  node->ty = ND_LVAR;
+  node->offset = (input[0] - 'a' + 1) * 8;
+  return node;
+}
+
 int consume(char *op) {
   Token *tok = vec->data[pos];
   if (tok->ty != TK_RESERVED || strlen(op) != tok->len || memcmp(tok->input, op, tok->len)) {
@@ -102,8 +119,41 @@ int consume(char *op) {
   return 1;
 }
 
+int at_eof() {
+  Token *tok = vec->data[pos];
+  if (tok->ty == TK_EOF)
+    return 1;
+  return 0;
+}
+
+Node *code[100];
+
+void program() {
+  int i = 0;
+  while (!at_eof()) {
+    code[i++] = stmt();
+  }
+  code[i] = NULL;
+}
+
+Node *stmt() {
+  Node *node = expr();
+  if (!consume(";")) {
+    Token *tok = vec->data[pos];
+    error("Unterminated statement: %s", tok->input);
+  }
+  return node;
+}
+
 Node *expr() {
-  return equality();
+  return assign();
+}
+
+Node *assign() {
+  Node *node = equality();
+  if (consume("="))
+    node = new_node(ND_ASSIGN, node, assign());
+  return node;
 }
 
 Node *equality() {
@@ -188,6 +238,10 @@ Node *term() {
   if (tok->ty == TK_NUM) {
     pos++;
     return new_node_num(tok->val);
+  }
+  if (tok->ty == TK_IDENT) {
+    pos++;
+    return new_node_lvar(tok->input);
   }
 
   error("Unexpected token found: %s", tok->input);

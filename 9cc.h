@@ -4,15 +4,6 @@
 #include <stdint.h>
 #include <string.h>
 
-typedef struct {
-  void **data;
-  int capacity;
-  int len;
-} Vector;
-
-Vector *new_vector();
-void vec_push(Vector *vec, void *elem);
-
 enum {
   TK_RESERVED,
   TK_IDENT,
@@ -20,15 +11,18 @@ enum {
   TK_EOF,
 };
 
-typedef struct {
+typedef struct Token Token;
+struct Token {
   int ty;
+  Token *next;
   int val;
   char *input;
   int len;
-} Token;
+};
 
+Token *new_token(int ty, Token *cur, char *input, int len);
 int startswith(char *p, char *q);
-void tokenize(char *p);
+Token *tokenize(char *p);
 void error(char *msg, char *input);
 
 enum {
@@ -57,6 +51,8 @@ Node *new_node(int ty, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
 Node *new_node_lvar(char *input);
 int consume(char *op);
+Token *consume_ident();
+int expect_number();
 int at_eof();
 void program();
 Node *stmt();

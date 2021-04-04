@@ -1,28 +1,25 @@
 #include "9cc.h"
 
-Vector *new_vector() {
-  Vector *vec = malloc(sizeof(Vector));
-  vec->data = malloc(sizeof(void *) * 16);
-  vec->capacity = 16;
-  vec->len = 0;
-  return vec;
-}
+Token *token;
 
-void vec_push(Vector *vec, void *elem) {
-  if (vec->capacity == vec->len) {
-    vec->capacity *= 2;
-    vec->data = realloc(vec->data, sizeof(void *) * vec->capacity);
-  }
-  vec->data[vec->len++] = elem;
+Token *new_token(int ty, Token *cur, char *input, int len) {
+  Token *tok = calloc(1, sizeof(Token));
+  tok->ty = ty;
+  tok->input = input;
+  tok->len = len;
+  cur->next = tok;
+  return tok;
 }
-
-Vector *vec;
 
 int startswith(char *p, char *q) {
   return memcmp(p, q, strlen(q)) == 0;
 }
 
-void tokenize(char *p) {
+Token *tokenize(char *p) {
+  Token head;
+  head.next = NULL;
+  Token *cur = &head;
+
   while (*p) {
     if (isspace(*p)) {
       p++;
@@ -30,43 +27,26 @@ void tokenize(char *p) {
     }
 
     if (startswith(p, "==") || startswith(p, "!=") || startswith(p, "<=") || startswith(p, ">=")) {
-      Token *tok = malloc(sizeof(Token));
-      tok->ty = TK_RESERVED;
-      tok->input = p;
-      tok->len= 2;
-      vec_push(vec, tok);
+      cur = new_token(TK_RESERVED, cur, p, 2);
       p += 2;
       continue;
     }
 
-    if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')' || *p == '<' || *p == '>' || *p == ';' || *p == '=') {
-      Token *tok = malloc(sizeof(Token));
-      tok->ty = TK_RESERVED;
-      tok->input = p;
-      tok->len = 1;
-      vec_push(vec, tok);
-      p++;
+    if (strchr("+-*/()<>;=", *p)) {
+      cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
 
     if ('a' <= *p && *p <= 'z') {
-      Token *tok = malloc(sizeof(Token));
-      tok->ty = TK_IDENT;
-      tok->input = p;
-      tok->len = 1;
-      vec_push(vec, tok);
-      p++;
+      cur = new_token(TK_IDENT, cur, p++, 1);
       continue;
     }
 
     if (isdigit(*p)) {
-      Token *tok = malloc(sizeof(Token));
-      tok->ty = TK_NUM;
-      tok->input = p;
+      cur = new_token(TK_NUM, cur, p, 0);
       char *q = p;
-      tok->val = strtol(p, &p, 10);
-      tok->len = p - q;
-      vec_push(vec, tok);
+      cur->val = strtol(p, &p, 10);
+      cur->len = p - q;
       continue;
     }
 
@@ -74,19 +54,14 @@ void tokenize(char *p) {
     exit(1);
   }
 
-  Token *tok = malloc(sizeof(Token));
-  tok->ty = TK_EOF;
-  tok->input = p;
-  tok->len = 0;
-  vec_push(vec, tok);
+  new_token(TK_EOF, cur, p, 0);
+  return head.next;
 }
 
 void error(char *msg, char *input) {
   fprintf(stderr, msg, input);
   exit(1);
 }
-
-int pos = 0;
 
 Node *new_node(int ty, Node *lhs, Node *rhs) {
   Node *node = malloc(sizeof(Node));
@@ -111,19 +86,31 @@ Node *new_node_lvar(char *input) {
 }
 
 int consume(char *op) {
-  Token *tok = vec->data[pos];
-  if (tok->ty != TK_RESERVED || strlen(op) != tok->len || memcmp(tok->input, op, tok->len)) {
+  if (token->ty != TK_RESERVED || strlen(op) != token->len || memcmp(token->input, op, token->len)) {
     return 0;
   }
-  pos++;
+  token = token->next;
   return 1;
 }
 
+Token *consume_ident() {
+  if (token->ty != TK_IDENT)
+    return NULL;
+  Token *t = token;
+  token = token->next;
+  return t;
+}
+
+int expect_number() {
+  if (token->ty != TK_NUM)
+    error("expect a number: %s", token->input);
+  int val = token->val;
+  token = token->next;
+  return val;
+}
+
 int at_eof() {
-  Token *tok = vec->data[pos];
-  if (tok->ty == TK_EOF)
-    return 1;
-  return 0;
+  return token->ty == TK_EOF;
 }
 
 Node *code[100];
@@ -139,8 +126,7 @@ void program() {
 Node *stmt() {
   Node *node = expr();
   if (!consume(";")) {
-    Token *tok = vec->data[pos];
-    error("Unterminated statement: %s", tok->input);
+    error("Unterminated statement: %s", token->input);
   }
   return node;
 }
@@ -228,21 +214,14 @@ Node *term() {
   if (consume("(")) {
     Node *node = add();
     if (!consume(")")) {
-      Token *tok = vec->data[pos];
-      error("Missing closing parenthesis: %s", tok->input);
+      error("Missing closing parenthesis: %s", token->input);
     }
     return node;
   }
 
-  Token *tok = vec->data[pos];
-  if (tok->ty == TK_NUM) {
-    pos++;
-    return new_node_num(tok->val);
-  }
-  if (tok->ty == TK_IDENT) {
-    pos++;
+  Token *tok = consume_ident();
+  if (tok)
     return new_node_lvar(tok->input);
-  }
 
-  error("Unexpected token found: %s", tok->input);
+  return new_node_num(expect_number());
 }

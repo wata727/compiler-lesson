@@ -45,6 +45,7 @@ enum {
   ND_ASSIGN,
   ND_LVAR,
   ND_NUM,
+  ND_RETURN,
 };
 
 typedef struct Node {
@@ -58,6 +59,7 @@ typedef struct Node {
 LVar *find_lvar(Token *tok);
 LVar *push_lvar(Token *tok);
 Node *new_node(int ty, Node *lhs, Node *rhs);
+Node *new_unary_node(int ty, Node *lhs);
 Node *new_node_num(int val);
 Node *new_node_lvar(LVar *var);
 int consume(char *op);

@@ -26,6 +26,12 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (startswith(p, "return") && !isalnum(p[6])) {
+      cur = new_token(TK_RESERVED, cur, p, 6);
+      p += 6;
+      continue;
+    }
+
     if (startswith(p, "==") || startswith(p, "!=") || startswith(p, "<=") || startswith(p, ">=")) {
       cur = new_token(TK_RESERVED, cur, p, 2);
       p += 2;
@@ -97,6 +103,13 @@ Node *new_node(int ty, Node *lhs, Node *rhs) {
   return node;
 }
 
+Node *new_unary_node(int ty, Node *lhs) {
+  Node *node = malloc(sizeof(Node));
+  node->ty = ty;
+  node->lhs = lhs;
+  return node;
+}
+
 Node *new_node_num(int val) {
   Node *node = malloc(sizeof(Node));
   node->ty = ND_NUM;
@@ -150,7 +163,13 @@ void program() {
 }
 
 Node *stmt() {
-  Node *node = expr();
+  Node *node;
+  if (consume("return")) {
+    node = new_unary_node(ND_RETURN, expr());
+  } else {
+    node = expr();
+  }
+
   if (!consume(";")) {
     error("Unterminated statement: %s", token->input);
   }

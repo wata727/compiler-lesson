@@ -25,6 +25,14 @@ int startswith(char *p, char *q);
 Token *tokenize(char *p);
 void error(char *msg, char *input);
 
+typedef struct LVar LVar;
+struct LVar {
+  LVar *next;
+  char *name;
+  int len;
+  int offset;
+};
+
 enum {
   ND_ADD,
   ND_SUB,
@@ -47,9 +55,11 @@ typedef struct Node {
   int offset;
 } Node;
 
+LVar *find_lvar(Token *tok);
+LVar *push_lvar(Token *tok);
 Node *new_node(int ty, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
-Node *new_node_lvar(char *input);
+Node *new_node_lvar(LVar *var);
 int consume(char *op);
 Token *consume_ident();
 int expect_number();

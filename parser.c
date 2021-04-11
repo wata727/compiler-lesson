@@ -37,8 +37,11 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if ('a' <= *p && *p <= 'z') {
-      cur = new_token(TK_IDENT, cur, p++, 1);
+    if (isalpha(*p)) {
+      char *q = p++;
+      while (isalnum(*p))
+        p++;
+      cur = new_token(TK_IDENT, cur, q, p - q);
       continue;
     }
 
@@ -63,6 +66,29 @@ void error(char *msg, char *input) {
   exit(1);
 }
 
+LVar *locals;
+
+LVar *find_lvar(Token *tok) {
+  for (LVar *var = locals; var; var = var->next)
+    if (var->len == tok->len && !memcmp(tok->input, var->name, var->len))
+      return var;
+  return NULL;
+}
+
+LVar *push_lvar(Token *tok) {
+  LVar *var = calloc(1, sizeof(LVar));
+  var->next = locals;
+  var->name = tok->input;
+  var->len = tok->len;
+  if (locals) {
+    var->offset = locals->offset + 8;
+  } else {
+    var->offset = 8;
+  }
+  locals = var;
+  return var;
+}
+
 Node *new_node(int ty, Node *lhs, Node *rhs) {
   Node *node = malloc(sizeof(Node));
   node->ty = ty;
@@ -78,10 +104,10 @@ Node *new_node_num(int val) {
   return node;
 }
 
-Node *new_node_lvar(char *input) {
+Node *new_node_lvar(LVar *var) {
   Node *node = malloc(sizeof(Node));
   node->ty = ND_LVAR;
-  node->offset = (input[0] - 'a' + 1) * 8;
+  node->offset = var->offset;
   return node;
 }
 
@@ -220,8 +246,12 @@ Node *term() {
   }
 
   Token *tok = consume_ident();
-  if (tok)
-    return new_node_lvar(tok->input);
+  if (tok) {
+    LVar *var = find_lvar(tok);
+    if (!var)
+      var = push_lvar(tok);
+    return new_node_lvar(var);
+  }
 
   return new_node_num(expect_number());
 }

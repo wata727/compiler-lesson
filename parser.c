@@ -182,6 +182,10 @@ void program() {
   code[i] = NULL;
 }
 
+Node *read_expr_stmt() {
+  return new_unary_node(ND_EXPR_STMT, expr());
+}
+
 Node *stmt() {
   if (consume("return")) {
     Node *node = new_unary_node(ND_RETURN, expr());
@@ -219,7 +223,7 @@ Node *stmt() {
     if (!consume("("))
       error("Expected open parenthese: %s", token->input);
     if (!consume(";")) {
-      node->init = expr();
+      node->init = read_expr_stmt();
       if (!consume(";"))
         error("Unterminated statement: %s", token->input);
     }
@@ -229,7 +233,7 @@ Node *stmt() {
         error("Unterminated statement: %s", token->input);
     }
     if (!consume(")")) {
-      node->inc = expr();
+      node->inc = read_expr_stmt();
       if (!consume(")"))
         error("Expected close parenthese: %s", token->input);
     }
@@ -237,7 +241,7 @@ Node *stmt() {
     return node;
   }
 
-  Node *node = expr();
+  Node *node = read_expr_stmt();
   if (!consume(";")) 
     error("Unterminated statement: %s", token->input);
   return node;

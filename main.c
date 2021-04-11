@@ -23,11 +23,8 @@ int main(int argc, char **argv) {
   if (locals)
     printf("  sub rsp, %d\n", locals->offset);
 
-  for (int i = 0; code[i]; i++) {
+  for (int i = 0; code[i]; i++)
     gen(code[i]);
-
-    printf("  pop rax\n");
-  }
 
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");

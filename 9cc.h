@@ -47,6 +47,7 @@ enum {
   ND_LVAR,
   ND_NUM,
   ND_RETURN,
+  ND_EXPR_STMT,
   ND_IF,
   ND_WHILE,
   ND_FOR,

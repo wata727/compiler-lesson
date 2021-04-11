@@ -22,6 +22,7 @@ struct Token {
 
 Token *new_token(int ty, Token *cur, char *input, int len);
 int startswith(char *p, char *q);
+char *starts_with_reserved(char *p);
 Token *tokenize(char *p);
 void error(char *msg, char *input);
 
@@ -46,19 +47,31 @@ enum {
   ND_LVAR,
   ND_NUM,
   ND_RETURN,
+  ND_IF,
+  ND_WHILE,
+  ND_FOR,
 };
 
 typedef struct Node {
   int ty;
+
   struct Node *lhs;
   struct Node *rhs;
+
+  struct Node *cond;
+  struct Node *then;
+  struct Node *els;
+  struct Node *init;
+  struct Node *inc;
+
   int val;
   int offset;
 } Node;
 
 LVar *find_lvar(Token *tok);
 LVar *push_lvar(Token *tok);
-Node *new_node(int ty, Node *lhs, Node *rhs);
+Node *new_node(int ty);
+Node *new_binary_node(int ty, Node *lhs, Node *rhs);
 Node *new_unary_node(int ty, Node *lhs);
 Node *new_node_num(int val);
 Node *new_node_lvar(LVar *var);

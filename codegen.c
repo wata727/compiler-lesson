@@ -1,5 +1,7 @@
 #include "9cc.h"
 
+int labelseq = 0;
+
 void gen_lval(Node *node) {
   if (node->ty != ND_LVAR)
     error("left value is not variable", "");
@@ -10,6 +12,8 @@ void gen_lval(Node *node) {
 }
 
 void gen(Node *node) {
+  int seq;
+
   switch (node->ty) {
     case ND_NUM:
       printf("  push %d\n", node->val);
@@ -35,6 +39,55 @@ void gen(Node *node) {
       printf("  mov rsp, rbp\n");
       printf("  pop rbp\n");
       printf("  ret\n");
+      return;
+    case ND_IF:
+      seq = labelseq++;
+      if (node->els) {
+        gen(node->cond);
+	printf("  pop rax\n");
+	printf("  cmp rax, 0\n");
+	printf("  je .Lelse%d\n", seq);
+	gen(node->then);
+	printf("  jmp .Lend%d\n", seq);
+	printf(".Lelse%d:\n", seq);
+	gen(node->els);
+	printf(".Lend%d:\n", seq);
+      } else {
+        gen(node->cond);
+	printf("  pop rax\n");
+	printf("  cmp rax, 0\n");
+	printf("  je .Lend%d\n", seq);
+	gen(node->then);
+	printf(".Lend%d:\n", seq);
+      }
+      return;
+    case ND_WHILE:
+      seq = labelseq++;
+      printf(".Lbegin%d:\n", seq);
+      gen(node->cond);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je .Lend%d\n", seq);
+      gen(node->then);
+      printf("  jmp .Lbegin%d\n", seq);
+      printf(".Lend%d:\n", seq);
+      return;
+    case ND_FOR:
+      seq = labelseq++;
+      if (node->init)
+        gen(node->init);
+      printf(".Lbegin%d:\n", seq);
+      if (node->cond) {
+        gen(node->cond);
+	printf("  pop rax\n");
+	printf("  cmp rax, 0\n");
+	printf("  je .Lend%d\n", seq);
+      }
+      gen(node->then);
+      if (node->inc)
+        gen(node->inc);
+      printf("  jmp .Lbegin%d\n", seq);
+      printf(".Lend%d:\n", seq);
       return;
   }
   

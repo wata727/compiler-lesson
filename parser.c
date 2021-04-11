@@ -15,6 +15,24 @@ int startswith(char *p, char *q) {
   return memcmp(p, q, strlen(q)) == 0;
 }
 
+char *starts_with_reserved(char *p) {
+  static char *kw[] = {"return", "if", "else", "while", "for"};
+
+  for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++) {
+    int len = strlen(kw[i]);
+    if (startswith(p, kw[i]) && !isalnum(p[len]))
+      return kw[i];
+  }
+
+  static char *ops[] = {"==", "!=", "<=", ">="};
+
+  for (int i = 0; i < sizeof(ops) / sizeof(*ops); i++)
+    if (startswith(p, ops[i]))
+      return ops[i];
+
+  return NULL;
+}
+
 Token *tokenize(char *p) {
   Token head;
   head.next = NULL;
@@ -26,15 +44,11 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (startswith(p, "return") && !isalnum(p[6])) {
-      cur = new_token(TK_RESERVED, cur, p, 6);
-      p += 6;
-      continue;
-    }
-
-    if (startswith(p, "==") || startswith(p, "!=") || startswith(p, "<=") || startswith(p, ">=")) {
-      cur = new_token(TK_RESERVED, cur, p, 2);
-      p += 2;
+    char *kw = starts_with_reserved(p);
+    if (kw) {
+      int len = strlen(kw);
+      cur = new_token(TK_RESERVED, cur, p, len);
+      p += len;
       continue;
     }
 
@@ -95,7 +109,13 @@ LVar *push_lvar(Token *tok) {
   return var;
 }
 
-Node *new_node(int ty, Node *lhs, Node *rhs) {
+Node *new_node(int ty) {
+  Node *node = malloc(sizeof(Node));
+  node->ty = ty;
+  return node;
+}
+
+Node *new_binary_node(int ty, Node *lhs, Node *rhs) {
   Node *node = malloc(sizeof(Node));
   node->ty = ty;
   node->lhs = lhs;
@@ -163,16 +183,63 @@ void program() {
 }
 
 Node *stmt() {
-  Node *node;
   if (consume("return")) {
-    node = new_unary_node(ND_RETURN, expr());
-  } else {
-    node = expr();
+    Node *node = new_unary_node(ND_RETURN, expr());
+    if (!consume(";"))
+      error("Unterminated statement: %s", token->input);
+    return node;
   }
 
-  if (!consume(";")) {
-    error("Unterminated statement: %s", token->input);
+  if (consume("if")) {
+    Node *node = new_node(ND_IF);
+    if (!consume("("))
+      error("Expected open parenthese: %s", token->input);
+    node->cond = expr();
+    if (!consume(")"))
+      error("Expected close parenthese: %s", token->input);
+    node->then = stmt();
+    if (consume("else"))
+      node->els = stmt();
+    return node;
   }
+
+  if (consume("while")) {
+    Node *node = new_node(ND_WHILE);
+    if (!consume("("))
+      error("Expected open parenthese: %s", token->input);
+    node->cond = expr();
+    if (!consume(")"))
+      error("Expected close parenthese: %s", token->input);
+    node->then = stmt();
+    return node;
+  }
+
+  if (consume("for")) {
+    Node *node = new_node(ND_FOR);
+    if (!consume("("))
+      error("Expected open parenthese: %s", token->input);
+    if (!consume(";")) {
+      node->init = expr();
+      if (!consume(";"))
+        error("Unterminated statement: %s", token->input);
+    }
+    if (!consume(";")) {
+      node->cond = expr();
+      if (!consume(";"))
+        error("Unterminated statement: %s", token->input);
+    }
+    if (!consume(")")) {
+      node->inc = expr();
+      if (!consume(")"))
+        error("Expected close parenthese: %s", token->input);
+    }
+    node->then = stmt();
+    return node;
+  }
+
+  Node *node = expr();
+  if (!consume(";")) 
+    error("Unterminated statement: %s", token->input);
   return node;
 }
 
@@ -183,7 +250,7 @@ Node *expr() {
 Node *assign() {
   Node *node = equality();
   if (consume("="))
-    node = new_node(ND_ASSIGN, node, assign());
+    node = new_binary_node(ND_ASSIGN, node, assign());
   return node;
 }
 
@@ -192,9 +259,9 @@ Node *equality() {
 
   for (;;) {
     if (consume("==")) {
-      node = new_node(ND_EQ, node, relational());
+      node = new_binary_node(ND_EQ, node, relational());
     } else if (consume("!=")) {
-      node = new_node(ND_NE, node, relational());
+      node = new_binary_node(ND_NE, node, relational());
     } else {
       return node;
     }
@@ -206,13 +273,13 @@ Node *relational() {
 
   for (;;) {
     if (consume("<")) {
-      node = new_node(ND_LT, node, add());
+      node = new_binary_node(ND_LT, node, add());
     } else if (consume("<=")) {
-      node = new_node(ND_LE, node, add());
+      node = new_binary_node(ND_LE, node, add());
     } else if (consume(">")) {
-      node = new_node(ND_LT, add(), node);
+      node = new_binary_node(ND_LT, add(), node);
     } else if (consume(">=")) {
-      node = new_node(ND_LE, add(), node);
+      node = new_binary_node(ND_LE, add(), node);
     } else {
       return node;
     }
@@ -224,9 +291,9 @@ Node *add() {
 
   for (;;) {
     if (consume("+")) {
-      node = new_node(ND_ADD, node, mul());
+      node = new_binary_node(ND_ADD, node, mul());
     } else if (consume("-")) {
-      node = new_node(ND_SUB, node, mul());
+      node = new_binary_node(ND_SUB, node, mul());
     } else {
       return node;
     }
@@ -238,9 +305,9 @@ Node *mul() {
 
   for (;;) {
     if (consume("*")) {
-      node = new_node(ND_MUL, node, unary());
+      node = new_binary_node(ND_MUL, node, unary());
     } else if (consume("/")) {
-      node = new_node(ND_DIV, node, unary());
+      node = new_binary_node(ND_DIV, node, unary());
     } else {
       return node;
     }
@@ -251,7 +318,7 @@ Node *unary() {
   if (consume("+"))
     return term();
   if (consume("-"))
-    return new_node(ND_SUB, new_node_num(0), term());
+    return new_binary_node(ND_SUB, new_node_num(0), term());
   return term();
 }
 

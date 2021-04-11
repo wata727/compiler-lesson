@@ -45,5 +45,12 @@ try 3 "a=3; return a;"
 try 8 "a=3; z=5; return a+z;"
 try 3 "foo=3; return foo;"
 try 8 "foo123=3; bar=5; return foo123+bar;"
+try 3 "if (0) return 2; return 3;"
+try 3 "if (1-1) return 2; return 3;"
+try 2 "if (1) return 2; return 3;"
+try 2 "if (2-1) return 2; return 3;"
+try 10 "i=0; while(i<10) i=i+1; return i;"
+try 55 "i=0; j=0; for (i=0; i<=10; i=i+1) j=i+j; return j;"
+try 3 "for (;;) return 3; return 5;"
 
 echo OK

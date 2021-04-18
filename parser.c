@@ -52,7 +52,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("+-*/()<>;={}", *p)) {
+    if (strchr("+-*/()<>;={},", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
@@ -343,6 +343,22 @@ Node *unary() {
   return term();
 }
 
+Node *func_args() {
+  if (consume(")"))
+    return NULL;
+
+  Node *head = assign();
+  Node *cur = head;
+  while (consume(",")) {
+    cur->next = assign();
+    cur = cur->next;
+  }
+  if (!consume(")")) {
+    error("Missing closing parenthesis: %s", token->input);
+  }
+  return head;
+}
+
 Node *term() {
   if (consume("(")) {
     Node *node = add();
@@ -354,6 +370,13 @@ Node *term() {
 
   Token *tok = consume_ident();
   if (tok) {
+    if (consume("(")) {
+      Node *node = new_node(ND_FUNCALL);
+      node->funcname = strndup(tok->input, tok->len);
+      node->args = func_args();
+      return node;
+    }
+
     LVar *var = find_lvar(tok);
     if (!var)
       var = push_lvar(tok);

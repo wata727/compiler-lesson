@@ -52,6 +52,7 @@ enum {
   ND_WHILE,
   ND_FOR,
   ND_BLOCK,
+  ND_FUNCALL,
 };
 
 typedef struct Node {
@@ -67,9 +68,11 @@ typedef struct Node {
   struct Node *init;
   struct Node *inc;
   struct Node *body;
+  struct Node *args;
 
   int val;
   int offset;
+  char *funcname;
 } Node;
 
 LVar *find_lvar(Token *tok);
@@ -92,6 +95,7 @@ Node *relational();
 Node *add();
 Node *mul();
 Node *unary();
+Node *func_args();
 Node *term();
 
 void gen(Node *node);

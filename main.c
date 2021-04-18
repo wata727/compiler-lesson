@@ -1,7 +1,7 @@
 #include "9cc.h"
 
 Token *token;
-Node *code[100];
+Node *node;
 LVar *locals;
 
 int main(int argc, char **argv) {
@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
 
   locals = NULL;
   token = tokenize(argv[1]);
-  program();
+  node = program();
 
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
@@ -23,8 +23,8 @@ int main(int argc, char **argv) {
   if (locals)
     printf("  sub rsp, %d\n", locals->offset);
 
-  for (int i = 0; code[i]; i++)
-    gen(code[i]);
+  for (Node *n = node; n; n = n->next)
+    gen(n);
 
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");

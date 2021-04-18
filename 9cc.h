@@ -51,10 +51,12 @@ enum {
   ND_IF,
   ND_WHILE,
   ND_FOR,
+  ND_BLOCK,
 };
 
 typedef struct Node {
   int ty;
+  struct Node *next;
 
   struct Node *lhs;
   struct Node *rhs;
@@ -64,6 +66,7 @@ typedef struct Node {
   struct Node *els;
   struct Node *init;
   struct Node *inc;
+  struct Node *body;
 
   int val;
   int offset;
@@ -80,7 +83,7 @@ int consume(char *op);
 Token *consume_ident();
 int expect_number();
 int at_eof();
-void program();
+Node *program();
 Node *stmt();
 Node *expr();
 Node *assign();

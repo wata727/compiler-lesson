@@ -52,7 +52,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("+-*/()<>;=", *p)) {
+    if (strchr("+-*/()<>;={}", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
@@ -172,14 +172,16 @@ int at_eof() {
   return token->ty == TK_EOF;
 }
 
-Node *code[100];
+Node *program() {
+  Node head;
+  head.next = NULL;
+  Node *cur = &head;
 
-void program() {
-  int i = 0;
   while (!at_eof()) {
-    code[i++] = stmt();
+    cur->next = stmt();
+    cur = cur->next;
   }
-  code[i] = NULL;
+  return head.next;
 }
 
 Node *read_expr_stmt() {
@@ -238,6 +240,21 @@ Node *stmt() {
         error("Expected close parenthese: %s", token->input);
     }
     node->then = stmt();
+    return node;
+  }
+
+  if (consume("{")) {
+    Node head;
+    head.next = NULL;
+    Node *cur = &head;
+
+    while (!consume("}")) {
+      cur->next = stmt();
+      cur = cur->next;
+    }
+
+    Node *node = new_node(ND_BLOCK);
+    node->body = head.next;
     return node;
   }
 

@@ -75,6 +75,13 @@ typedef struct Node {
   char *funcname;
 } Node;
 
+typedef struct Function {
+  struct Function *next;
+  char *name;
+  Node *node;
+  LVar *locals;
+} Function;
+
 LVar *find_lvar(Token *tok);
 LVar *push_lvar(Token *tok);
 Node *new_node(int ty);
@@ -85,8 +92,10 @@ Node *new_node_lvar(LVar *var);
 int consume(char *op);
 Token *consume_ident();
 int expect_number();
+char *expect_ident();
 int at_eof();
-Node *program();
+Function *program();
+Function *function();
 Node *stmt();
 Node *expr();
 Node *assign();

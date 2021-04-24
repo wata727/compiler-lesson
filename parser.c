@@ -168,17 +168,25 @@ int expect_number() {
   return val;
 }
 
+char *expect_ident() {
+  if (token->ty != TK_IDENT)
+    error("expect an identifier: %s", token->input);
+  char *s = strndup(token->input, token->len);
+  token = token->next;
+  return s;
+}
+
 int at_eof() {
   return token->ty == TK_EOF;
 }
 
-Node *program() {
-  Node head;
+Function *program() {
+  Function head;
   head.next = NULL;
-  Node *cur = &head;
+  Function *cur = &head;
 
   while (!at_eof()) {
-    cur->next = stmt();
+    cur->next = function();
     cur = cur->next;
   }
   return head.next;
@@ -186,6 +194,33 @@ Node *program() {
 
 Node *read_expr_stmt() {
   return new_unary_node(ND_EXPR_STMT, expr());
+}
+
+Function *function() {
+  locals = NULL;
+
+  char *name = expect_ident();
+  if (!consume("("))
+    error("Function identifier must be followed by open parenthese: %s", token->input);
+  if (!consume(")"))
+    error("Expected close parenthese: %s", token->input);
+  if (!consume("{"))
+    error("Function must start from block: %s", token->input);
+
+  Node head;
+  head.next = NULL;
+  Node *cur = &head;
+
+  while (!consume("}")) {
+    cur->next = stmt();
+    cur = cur->next;
+  }
+
+  Function *fn = calloc(1, sizeof(Function));
+  fn->name = name;
+  fn->node = head.next;
+  fn->locals = locals;
+  return fn;
 }
 
 Node *stmt() {

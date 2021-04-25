@@ -12,19 +12,25 @@ int main(int argc, char **argv) {
   Function *prog = program();
 
   printf(".intel_syntax noprefix\n");
-  printf(".global main\n");
-  printf("main:\n");
+  for (Function *fn = prog; fn; fn = fn->next) {
+    printf(".global %s\n", fn->name);
+    printf("%s:\n", fn->name);
 
-  printf("  push rbp\n");
-  printf("  mov rbp, rsp\n");
-  if (prog->locals)
-    printf("  sub rsp, %d\n", prog->locals->offset);
+    // Prologue
+    printf("  push rbp\n");
+    printf("  mov rbp, rsp\n");
+    if (fn->locals)
+      printf("  sub rsp, %d\n", fn->locals->offset);
 
-  for (Node *n = prog->node; n; n = n->next)
-    gen(n);
+    // Emit code
+    for (Node *n = fn->node; n; n = n->next)
+      gen(n);
 
-  printf("  mov rsp, rbp\n");
-  printf("  pop rbp\n");
-  printf("  ret\n");
+    // Epilogue
+    printf(".Lreturn.%s:\n", fn->name);
+    printf("  mov rsp, rbp\n");
+    printf("  pop rbp\n");
+    printf("  ret\n");
+  }
   return 0;
 }

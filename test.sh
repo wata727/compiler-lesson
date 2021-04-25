@@ -74,5 +74,6 @@ try 5 "main() { return ret5(); }"
 try 8 "main() { return add(3, 5); }"
 try 2 "main() { return sub(5, 3); }"
 try 21 "main() { return add6(1,2,3,4,5,6); }"
+try 32 "main() { return ret32(); } ret32() { return 32; }"
 
 echo OK

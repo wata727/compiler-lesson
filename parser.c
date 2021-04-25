@@ -86,26 +86,31 @@ void error(char *msg, char *input) {
   exit(1);
 }
 
-LVar *locals;
+VarList *locals;
 
 LVar *find_lvar(Token *tok) {
-  for (LVar *var = locals; var; var = var->next)
+  for (VarList *vl = locals; vl; vl = vl->next) {
+    LVar *var = vl->var;
     if (var->len == tok->len && !memcmp(tok->input, var->name, var->len))
       return var;
+  }
   return NULL;
 }
 
 LVar *push_lvar(Token *tok) {
   LVar *var = calloc(1, sizeof(LVar));
-  var->next = locals;
   var->name = tok->input;
   var->len = tok->len;
   if (locals) {
-    var->offset = locals->offset + 8;
+    var->offset = locals->var->offset + 8;
   } else {
     var->offset = 8;
   }
-  locals = var;
+
+  VarList *vl = calloc(1, sizeof(VarList));
+  vl->var = var;
+  vl->next = locals;
+  locals = vl;
   return var;
 }
 
@@ -168,12 +173,12 @@ int expect_number() {
   return val;
 }
 
-char *expect_ident() {
+Token *expect_ident() {
   if (token->ty != TK_IDENT)
     error("expect an identifier: %s", token->input);
-  char *s = strndup(token->input, token->len);
+  Token *t = token;
   token = token->next;
-  return s;
+  return t;
 }
 
 int at_eof() {
@@ -196,14 +201,34 @@ Node *read_expr_stmt() {
   return new_unary_node(ND_EXPR_STMT, expr());
 }
 
+VarList *read_func_params() {
+  if (consume(")"))
+    return NULL;
+
+  VarList *head = calloc(1, sizeof(VarList));
+  head->var = push_lvar(expect_ident());
+  VarList *cur = head;
+
+  while (!consume(")")) {
+    if (!consume(","))
+      error("Function arguments must be split by comma: %s", token->input);
+    cur->next = calloc(1, sizeof(VarList));
+    cur->next->var = push_lvar(expect_ident());
+    cur = cur->next;
+  }
+
+  return head;
+}
+
 Function *function() {
   locals = NULL;
 
-  char *name = expect_ident();
+  Function *fn = calloc(1, sizeof(Function));
+  Token *t = expect_ident();
+  fn->name = strndup(t->input, t->len);
   if (!consume("("))
     error("Function identifier must be followed by open parenthese: %s", token->input);
-  if (!consume(")"))
-    error("Expected close parenthese: %s", token->input);
+  fn->params = read_func_params();
   if (!consume("{"))
     error("Function must start from block: %s", token->input);
 
@@ -216,8 +241,6 @@ Function *function() {
     cur = cur->next;
   }
 
-  Function *fn = calloc(1, sizeof(Function));
-  fn->name = name;
   fn->node = head.next;
   fn->locals = locals;
   return fn;

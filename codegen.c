@@ -3,6 +3,36 @@
 int labelseq = 0;
 char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
+void codegen(Function *prog) {
+  printf(".intel_syntax noprefix\n");
+  for (Function *fn = prog; fn; fn = fn->next) {
+    printf(".global %s\n", fn->name);
+    printf("%s:\n", fn->name);
+
+    // Prologue
+    printf("  push rbp\n");
+    printf("  mov rbp, rsp\n");
+    if (fn->locals)
+      printf("  sub rsp, %d\n", fn->locals->var->offset);
+
+    int i = 0;
+    for (VarList *vl = fn->params; vl; vl = vl->next) {
+      LVar *var = vl->var;
+      printf("  mov [rbp-%d], %s\n", var->offset, argreg[i++]);
+    }
+
+    // Emit code
+    for (Node *n = fn->node; n; n = n->next)
+      gen(n);
+
+    // Epilogue
+    printf(".Lreturn.%s:\n", fn->name);
+    printf("  mov rsp, rbp\n");
+    printf("  pop rbp\n");
+    printf("  ret\n");
+  }
+}
+
 void gen_lval(Node *node) {
   if (node->ty != ND_LVAR)
     error("left value is not variable", "");

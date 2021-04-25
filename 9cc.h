@@ -28,10 +28,15 @@ void error(char *msg, char *input);
 
 typedef struct LVar LVar;
 struct LVar {
-  LVar *next;
   char *name;
   int len;
   int offset;
+};
+
+typedef struct VarList VarList;
+struct VarList {
+  struct VarList *next;
+  LVar *var;
 };
 
 enum {
@@ -78,8 +83,10 @@ typedef struct Node {
 typedef struct Function {
   struct Function *next;
   char *name;
+  VarList *params;
+
   Node *node;
-  LVar *locals;
+  VarList *locals;
 } Function;
 
 LVar *find_lvar(Token *tok);
@@ -92,7 +99,7 @@ Node *new_node_lvar(LVar *var);
 int consume(char *op);
 Token *consume_ident();
 int expect_number();
-char *expect_ident();
+Token *expect_ident();
 int at_eof();
 Function *program();
 Function *function();
@@ -107,6 +114,7 @@ Node *unary();
 Node *func_args();
 Node *term();
 
+void codegen(Function *prog);
 void gen(Node *node);
 
 int expect(int line, int expected, int acutual);

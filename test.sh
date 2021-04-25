@@ -78,5 +78,12 @@ try 32 "main() { return ret32(); } ret32() { return 32; }"
 try 7 "main() { return add2(3,4); } add2(x,y) { return x+y; }"
 try 1 "main() { return sub2(4,3); } sub2(x,y) { return x-y; }"
 try 55 "main() { return fib(9); } fib(x) { if (x<=1) return 1; return fib(x-1) + fib(x-2); }"
+try 3 "main() { x=3; return *&x; }"
+try 3 "main() { x=3; y=&x; z=&y; return **z; }"
+try 5 "main() { x=3; y=5; return *(&x-8); }"
+try 3 "main() { x=3; y=5; return *(&y+8); }"
+try 5 "main() { x=3; y=&x; *y=5; return x; }"
+try 7 "main() { x=3; y=5; *(&x-8)=7; return y; }"
+try 7 "main() { x=3; y=5; *(&y+8)=7; return x; }"
 
 echo OK

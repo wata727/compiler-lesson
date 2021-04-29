@@ -37,7 +37,7 @@ void gen_lval(Node *node) {
   switch (node->ty) {
   case ND_LVAR:
     printf("  mov rax, rbp\n");
-    printf("  sub rax, %d\n", node->offset);
+    printf("  sub rax, %d\n", node->var->offset);
     printf("  push rax\n");
     return;
   case ND_DEREF:

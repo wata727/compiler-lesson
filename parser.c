@@ -97,10 +97,11 @@ LVar *find_lvar(Token *tok) {
   return NULL;
 }
 
-LVar *push_lvar(Token *tok) {
+LVar *push_lvar(Token *tok, Type *ty) {
   LVar *var = calloc(1, sizeof(LVar));
   var->name = tok->input;
   var->len = tok->len;
+  var->type = ty;
   if (locals) {
     var->offset = locals->var->offset + 8;
   } else {
@@ -145,7 +146,7 @@ Node *new_node_num(int val) {
 Node *new_node_lvar(LVar *var) {
   Node *node = malloc(sizeof(Node));
   node->ty = ND_LVAR;
-  node->offset = var->offset;
+  node->var = var;
   return node;
 }
 
@@ -206,15 +207,19 @@ Node *read_expr_stmt() {
   return new_unary_node(ND_EXPR_STMT, expr());
 }
 
-void basetype() {
+Type *basetype() {
   if (!consume("int"))
     error("expected type: %s", token->input);
+  Type *ty = int_type();
+  while(consume("*"))
+    ty = pointer_to(ty);
+  return ty;
 }
 
 VarList *read_func_param() {
   VarList *vl = calloc(1, sizeof(VarList));
-  basetype();
-  vl->var = push_lvar(expect_ident());
+  Type *ty = basetype();
+  vl->var = push_lvar(expect_ident(), ty);
   return vl;
 }
 
@@ -263,8 +268,8 @@ Function *function() {
 }
 
 Node *declaration() {
-  basetype();
-  push_lvar(expect_ident());
+  Type *ty = basetype();
+  push_lvar(expect_ident(), ty);
 
   if (consume(";"))
     return new_node(ND_NULL);

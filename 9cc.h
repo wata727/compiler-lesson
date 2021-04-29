@@ -26,10 +26,18 @@ char *starts_with_reserved(char *p);
 Token *tokenize(char *p);
 void error(char *msg, char *input);
 
+typedef enum { TY_INT, TY_PTR } TypeKind;
+typedef struct Type Type;
+struct Type {
+  TypeKind kind;
+  Type *ptr_to;
+};
+
 typedef struct LVar LVar;
 struct LVar {
   char *name;
   int len;
+  Type *type;
   int offset;
 };
 
@@ -66,6 +74,7 @@ enum {
 typedef struct Node {
   int ty;
   struct Node *next;
+  Type *type;
 
   struct Node *lhs;
   struct Node *rhs;
@@ -79,7 +88,7 @@ typedef struct Node {
   struct Node *args;
 
   int val;
-  int offset;
+  LVar *var;
   char *funcname;
 } Node;
 
@@ -93,7 +102,7 @@ typedef struct Function {
 } Function;
 
 LVar *find_lvar(Token *tok);
-LVar *push_lvar(Token *tok);
+LVar *push_lvar(Token *tok, Type *ty);
 Node *new_node(int ty);
 Node *new_binary_node(int ty, Node *lhs, Node *rhs);
 Node *new_unary_node(int ty, Node *lhs);
@@ -120,6 +129,10 @@ Node *term();
 
 void codegen(Function *prog);
 void gen(Node *node);
+
+Type *int_type();
+Type *pointer_to(Type *to);
+void add_type(Function *prog);
 
 int expect(int line, int expected, int acutual);
 void runtest();

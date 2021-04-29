@@ -10,6 +10,7 @@ int main(int argc, char **argv) {
 
   token = tokenize(argv[1]);
   Function *prog = program();
+  add_type(prog);
   codegen(prog);
 
   return 0;

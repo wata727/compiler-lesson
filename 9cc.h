@@ -60,6 +60,7 @@ enum {
   ND_FUNCALL,
   ND_ADDR,
   ND_DEREF,
+  ND_NULL,
 };
 
 typedef struct Node {
@@ -98,6 +99,7 @@ Node *new_binary_node(int ty, Node *lhs, Node *rhs);
 Node *new_unary_node(int ty, Node *lhs);
 Node *new_node_num(int val);
 Node *new_node_lvar(LVar *var);
+int peek(char *op);
 int consume(char *op);
 Token *consume_ident();
 int expect_number();

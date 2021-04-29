@@ -16,7 +16,7 @@ int startswith(char *p, char *q) {
 }
 
 char *starts_with_reserved(char *p) {
-  static char *kw[] = {"return", "if", "else", "while", "for"};
+  static char *kw[] = {"return", "if", "else", "while", "for", "int"};
 
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++) {
     int len = strlen(kw[i]);
@@ -149,10 +149,15 @@ Node *new_node_lvar(LVar *var) {
   return node;
 }
 
-int consume(char *op) {
-  if (token->ty != TK_RESERVED || strlen(op) != token->len || memcmp(token->input, op, token->len)) {
+int peek(char *op) {
+  if (token->ty != TK_RESERVED || strlen(op) != token->len || memcmp(token->input, op, token->len))
     return 0;
-  }
+  return 1;
+}
+
+int consume(char *op) {
+  if (!peek(op))
+    return 0;
   token = token->next;
   return 1;
 }
@@ -201,19 +206,29 @@ Node *read_expr_stmt() {
   return new_unary_node(ND_EXPR_STMT, expr());
 }
 
+void basetype() {
+  if (!consume("int"))
+    error("expected type: %s", token->input);
+}
+
+VarList *read_func_param() {
+  VarList *vl = calloc(1, sizeof(VarList));
+  basetype();
+  vl->var = push_lvar(expect_ident());
+  return vl;
+}
+
 VarList *read_func_params() {
   if (consume(")"))
     return NULL;
 
-  VarList *head = calloc(1, sizeof(VarList));
-  head->var = push_lvar(expect_ident());
+  VarList *head = read_func_param();
   VarList *cur = head;
 
   while (!consume(")")) {
     if (!consume(","))
       error("Function arguments must be split by comma: %s", token->input);
-    cur->next = calloc(1, sizeof(VarList));
-    cur->next->var = push_lvar(expect_ident());
+    cur->next = read_func_param();
     cur = cur->next;
   }
 
@@ -224,6 +239,7 @@ Function *function() {
   locals = NULL;
 
   Function *fn = calloc(1, sizeof(Function));
+  basetype();
   Token *t = expect_ident();
   fn->name = strndup(t->input, t->len);
   if (!consume("("))
@@ -244,6 +260,15 @@ Function *function() {
   fn->node = head.next;
   fn->locals = locals;
   return fn;
+}
+
+Node *declaration() {
+  basetype();
+  push_lvar(expect_ident());
+
+  if (consume(";"))
+    return new_node(ND_NULL);
+  error("Unterminated declaration: %s", token->input);
 }
 
 Node *stmt() {
@@ -315,6 +340,9 @@ Node *stmt() {
     node->body = head.next;
     return node;
   }
+
+  if (peek("int"))
+    return declaration();
 
   Node *node = read_expr_stmt();
   if (!consume(";")) 
@@ -441,7 +469,7 @@ Node *term() {
 
     LVar *var = find_lvar(tok);
     if (!var)
-      var = push_lvar(tok);
+      error("Undefined variable: %s", tok->input);
     return new_node_lvar(var);
   }
 

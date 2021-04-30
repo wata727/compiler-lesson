@@ -13,6 +13,16 @@ Type *pointer_to(Type *to) {
   return ty;
 }
 
+int size_of(Type *ty) {
+  switch (ty->kind) {
+  case TY_INT:
+    return 4;
+  case TY_PTR:
+    return 8;
+  }
+  error("Unexpected type for sizeof", "");
+}
+
 void visit(Node *node) {
   if (!node)
     return;
@@ -60,6 +70,12 @@ void visit(Node *node) {
     if (node->lhs->type->kind != TY_PTR)
       error("invalid pointer dereference", "");
     node->type = node->lhs->type->ptr_to;
+    return;
+  case ND_SIZEOF:
+    node->ty = ND_NUM;
+    node->type = int_type();
+    node->val = size_of(node->lhs->type);
+    node->lhs = NULL;
     return;
   }
 }

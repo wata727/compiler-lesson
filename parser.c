@@ -16,7 +16,7 @@ int startswith(char *p, char *q) {
 }
 
 char *starts_with_reserved(char *p) {
-  static char *kw[] = {"return", "if", "else", "while", "for", "int"};
+  static char *kw[] = {"return", "if", "else", "while", "for", "int", "sizeof"};
 
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++) {
     int len = strlen(kw[i]);
@@ -435,6 +435,8 @@ Node *unary() {
     return new_unary_node(ND_ADDR, unary());
   if (consume("*"))
     return new_unary_node(ND_DEREF, unary());
+  if (consume("sizeof"))
+    return new_unary_node(ND_SIZEOF, unary());
   return term();
 }
 

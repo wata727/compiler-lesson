@@ -69,6 +69,7 @@ enum {
   ND_ADDR,
   ND_DEREF,
   ND_NULL,
+  ND_SIZEOF,
 };
 
 typedef struct Node {

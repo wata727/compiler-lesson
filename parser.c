@@ -452,7 +452,19 @@ Node *unary() {
     return new_unary_node(ND_DEREF, unary());
   if (consume("sizeof"))
     return new_unary_node(ND_SIZEOF, unary());
-  return term();
+  return postfix();
+}
+
+Node *postfix() {
+  Node *node = term();
+
+  while (consume("[")) {
+    Node *exp = new_binary_node(ND_ADD, node, expr());
+    if (!consume("]"))
+      error("Missing closing bracket: %s", token->input);
+    node = new_unary_node(ND_DEREF, exp);
+  }
+  return node;
 }
 
 Node *func_args() {

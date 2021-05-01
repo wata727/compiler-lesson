@@ -26,11 +26,12 @@ char *starts_with_reserved(char *p);
 Token *tokenize(char *p);
 void error(char *msg, char *input);
 
-typedef enum { TY_INT, TY_PTR } TypeKind;
+typedef enum { TY_INT, TY_PTR, TY_ARRAY } TypeKind;
 typedef struct Type Type;
 struct Type {
   TypeKind kind;
   Type *ptr_to;
+  int array_size;
 };
 
 typedef struct LVar LVar;
@@ -133,6 +134,8 @@ void gen(Node *node);
 
 Type *int_type();
 Type *pointer_to(Type *to);
+Type *array_of(Type *base, int size);
+int size_of(Type *ty);
 void add_type(Function *prog);
 
 int expect(int line, int expected, int acutual);

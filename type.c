@@ -13,12 +13,21 @@ Type *pointer_to(Type *to) {
   return ty;
 }
 
+Type *array_of(Type *base, int size) {
+  Type *ty = calloc(1, sizeof(Type));
+  ty->kind = TY_ARRAY;
+  ty->ptr_to = base;
+  ty->array_size = size;
+  return ty;
+}
+
 int size_of(Type *ty) {
   switch (ty->kind) {
   case TY_INT:
-    return 4;
   case TY_PTR:
     return 8;
+  case TY_ARRAY:
+    return size_of(ty->ptr_to) * ty->array_size;
   }
   error("Unexpected type for sizeof", "");
 }
@@ -43,7 +52,7 @@ void visit(Node *node) {
   switch (node->ty) {
   case ND_ADD:
   case ND_SUB:
-    if (node->rhs->type->kind == TY_PTR)
+    if (node->rhs->type->ptr_to)
       error("invalid pointer arithmetic operands", "");
     node->type = node->lhs->type;
     return;
@@ -64,10 +73,13 @@ void visit(Node *node) {
     node->type = node->lhs->type;
     return;
   case ND_ADDR:
-    node->type = pointer_to(node->lhs->type);
+    if (node->lhs->type->kind == TY_ARRAY)
+      node->type = pointer_to(node->lhs->type->ptr_to);
+    else
+      node->type = pointer_to(node->lhs->type);
     return;
   case ND_DEREF:
-    if (node->lhs->type->kind != TY_PTR)
+    if (!node->lhs->type->ptr_to)
       error("invalid pointer dereference", "");
     node->type = node->lhs->type->ptr_to;
     return;

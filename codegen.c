@@ -57,11 +57,15 @@ void gen(Node *node) {
       return;
     case ND_LVAR:
       gen_lval(node);
-      printf("  pop rax\n");
-      printf("  mov rax, [rax]\n");
-      printf("  push rax\n");
+      if (node->type->kind != TY_ARRAY) {
+        printf("  pop rax\n");
+        printf("  mov rax, [rax]\n");
+        printf("  push rax\n");
+      }
       return;
     case ND_ASSIGN:
+      if (node->lhs->type->kind == TY_ARRAY)
+        error("not an lvalue", "");
       gen_lval(node->lhs);
       gen(node->rhs);
 
@@ -165,9 +169,11 @@ void gen(Node *node) {
       return;
     case ND_DEREF:
       gen(node->lhs);
-      printf("  pop rax\n");
-      printf("  mov rax, [rax]\n");
-      printf("  push rax\n");
+      if (node->type->kind != TY_ARRAY) {
+        printf("  pop rax\n");
+        printf("  mov rax, [rax]\n");
+        printf("  push rax\n");
+      }
       return;
     case ND_NULL:
       return;
@@ -182,13 +188,13 @@ void gen(Node *node) {
 
   switch (node->ty) {
     case ND_ADD:
-      if (node->type->kind == TY_PTR)
-        printf("  imul rdi, 8\n");
+      if (node->type->ptr_to)
+        printf("  imul rdi, %d\n", size_of(node->type->ptr_to));
       printf("  add rax, rdi\n");
       break;
     case ND_SUB:
-      if (node->type->kind == TY_PTR)
-        printf("  imul rdi, 8\n");
+      if (node->type->ptr_to)
+        printf("  imul rdi, %d\n", size_of(node->type->ptr_to));
       printf("  sub rax, rdi\n");
       break;
     case ND_MUL:

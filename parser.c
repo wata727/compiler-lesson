@@ -52,7 +52,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("+-*/()<>;={},&", *p)) {
+    if (strchr("+-*/()<>;={},&[]", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
@@ -103,9 +103,9 @@ LVar *push_lvar(Token *tok, Type *ty) {
   var->len = tok->len;
   var->type = ty;
   if (locals) {
-    var->offset = locals->var->offset + 8;
+    var->offset = locals->var->offset + size_of(ty);
   } else {
-    var->offset = 8;
+    var->offset = size_of(ty);
   }
 
   VarList *vl = calloc(1, sizeof(VarList));
@@ -216,10 +216,23 @@ Type *basetype() {
   return ty;
 }
 
+Type *read_type_suffix(Type *base) {
+  if (!consume("["))
+    return base;
+  int sz = expect_number();
+  if (!consume("]"))
+    error("number is expected for array size", "");
+  base = read_type_suffix(base);
+  return array_of(base, sz);
+}
+
 VarList *read_func_param() {
-  VarList *vl = calloc(1, sizeof(VarList));
   Type *ty = basetype();
-  vl->var = push_lvar(expect_ident(), ty);
+  Token *tok = expect_ident();
+  ty = read_type_suffix(ty);
+
+  VarList *vl = calloc(1, sizeof(VarList));
+  vl->var = push_lvar(tok, ty);
   return vl;
 }
 
@@ -269,7 +282,9 @@ Function *function() {
 
 Node *declaration() {
   Type *ty = basetype();
-  push_lvar(expect_ident(), ty);
+  Token *tok = expect_ident();
+  ty = read_type_suffix(ty);
+  push_lvar(tok, ty);
 
   if (consume(";"))
     return new_node(ND_NULL);

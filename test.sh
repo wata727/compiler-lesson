@@ -22,7 +22,24 @@ try() {
   if [ "$actual" = "$expected" ]; then
     echo "$input => $actual"
   else
-    echo "$expected expected, but got $actual"
+    echo "$input => $expected expected, but got $actual"
+    exit 1
+  fi
+}
+
+assert() {
+  expected="$1"
+  input="$2"
+
+  ./9cc "$input" > tmp.s
+  gcc -static -o tmp tmp.s tmp2.o
+  ./tmp
+  actual="$?"
+
+  if [ "$actual" = "$expected" ]; then
+    echo "$input => $actual"
+  else
+    echo "$input => $expected expected, but got $actual"
     exit 1
   fi
 }
@@ -114,5 +131,13 @@ try 3 "int main() { int x[2][3]; int *y; y=x; y[3]=3; return x[1][0]; }"
 try 4 "int main() { int x[2][3]; int *y; y=x; y[4]=4; return x[1][1]; }"
 try 5 "int main() { int x[2][3]; int *y; y=x; y[5]=5; return x[1][2]; }"
 try 6 "int main() { int x[2][3]; int *y; y=x; y[6]=6; return x[2][0]; }"
+assert 0 "int x; int main() { return x; }"
+assert 3 "int x; int main() { x=3; return x; }"
+assert 0 "int x[4]; int main() { x[0]=0; x[1]=1; x[2]=2; x[3]=3; return x[0]; }"
+assert 1 "int x[4]; int main() { x[0]=0; x[1]=1; x[2]=2; x[3]=3; return x[1]; }"
+assert 2 "int x[4]; int main() { x[0]=0; x[1]=1; x[2]=2; x[3]=3; return x[2]; }"
+assert 3 "int x[4]; int main() { x[0]=0; x[1]=1; x[2]=2; x[3]=3; return x[3]; }"
+assert 8 "int x; int main() { return sizeof(x); }"
+assert 32 "int x[4]; int main() { return sizeof(x); }"
 
 echo OK

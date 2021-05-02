@@ -87,31 +87,45 @@ void error(char *msg, char *input) {
 }
 
 VarList *locals;
+VarList *globals;
 
-LVar *find_lvar(Token *tok) {
+Var *find_var(Token *tok) {
   for (VarList *vl = locals; vl; vl = vl->next) {
-    LVar *var = vl->var;
+    Var *var = vl->var;
+    if (var->len == tok->len && !memcmp(tok->input, var->name, var->len))
+      return var;
+  }
+  for (VarList *vl = globals; vl; vl = vl->next) {
+    Var *var = vl->var;
     if (var->len == tok->len && !memcmp(tok->input, var->name, var->len))
       return var;
   }
   return NULL;
 }
 
-LVar *push_lvar(Token *tok, Type *ty) {
-  LVar *var = calloc(1, sizeof(LVar));
-  var->name = tok->input;
+Var *push_var(Token *tok, Type *ty, int is_local) {
+  Var *var = calloc(1, sizeof(Var));
+  var->name = strndup(tok->input, tok->len);
   var->len = tok->len;
   var->type = ty;
-  if (locals) {
-    var->offset = locals->var->offset + size_of(ty);
-  } else {
-    var->offset = size_of(ty);
+  var->is_local = is_local;
+  if (is_local) {
+    if (locals) {
+      var->offset = locals->var->offset + size_of(ty);
+    } else {
+      var->offset = size_of(ty);
+    }
   }
 
   VarList *vl = calloc(1, sizeof(VarList));
   vl->var = var;
-  vl->next = locals;
-  locals = vl;
+  if (is_local) {
+    vl->next = locals;
+    locals = vl;
+  } else {
+    vl->next = globals;
+    globals = vl;
+  }
   return var;
 }
 
@@ -143,9 +157,9 @@ Node *new_node_num(int val) {
   return node;
 }
 
-Node *new_node_lvar(LVar *var) {
+Node *new_node_var(Var *var) {
   Node *node = malloc(sizeof(Node));
-  node->ty = ND_LVAR;
+  node->ty = ND_VAR;
   node->var = var;
   return node;
 }
@@ -191,16 +205,33 @@ int at_eof() {
   return token->ty == TK_EOF;
 }
 
-Function *program() {
+int is_function() {
+  Token *tok = token;
+  basetype();
+  int isfunc = consume_ident() && consume("(");
+  token = tok;
+  return isfunc;
+}
+
+Program *program() {
   Function head;
   head.next = NULL;
   Function *cur = &head;
+  globals = NULL;
 
   while (!at_eof()) {
-    cur->next = function();
-    cur = cur->next;
+    if (is_function()) {
+      cur->next = function();
+      cur = cur->next;
+    } else {
+      global_var();
+    }
   }
-  return head.next;
+
+  Program *prog = calloc(1, sizeof(Program));
+  prog->globals = globals;
+  prog->fns = head.next;
+  return prog;
 }
 
 Node *read_expr_stmt() {
@@ -232,7 +263,7 @@ VarList *read_func_param() {
   ty = read_type_suffix(ty);
 
   VarList *vl = calloc(1, sizeof(VarList));
-  vl->var = push_lvar(tok, ty);
+  vl->var = push_var(tok, ty, 1);
   return vl;
 }
 
@@ -280,11 +311,20 @@ Function *function() {
   return fn;
 }
 
+void global_var() {
+  Type *ty = basetype();
+  Token *tok = expect_ident();
+  ty = read_type_suffix(ty);
+  if (!consume(";"))
+    error("Unterminated global variable declaration: %s", tok->input);
+  push_var(tok, ty, 0);
+}
+
 Node *declaration() {
   Type *ty = basetype();
   Token *tok = expect_ident();
   ty = read_type_suffix(ty);
-  push_lvar(tok, ty);
+  push_var(tok, ty, 1);
 
   if (consume(";"))
     return new_node(ND_NULL);
@@ -501,10 +541,10 @@ Node *term() {
       return node;
     }
 
-    LVar *var = find_lvar(tok);
+    Var *var = find_var(tok);
     if (!var)
       error("Undefined variable: %s", tok->input);
-    return new_node_lvar(var);
+    return new_node_var(var);
   }
 
   return new_node_num(expect_number());

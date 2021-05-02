@@ -66,7 +66,7 @@ void visit(Node *node) {
   case ND_NUM:
     node->type = int_type();
     return;
-  case ND_LVAR:
+  case ND_VAR:
     node->type = node->var->type;
     return;
   case ND_ASSIGN:
@@ -92,8 +92,8 @@ void visit(Node *node) {
   }
 }
 
-void add_type(Function *prog) {
-  for (Function *fn = prog; fn; fn = fn->next)
+void add_type(Program *prog) {
+  for (Function *fn = prog->fns; fn; fn = fn->next)
     for (Node *node = fn->node; node; node = node->next)
       visit(node);
 }

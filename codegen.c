@@ -3,9 +3,22 @@
 int labelseq = 0;
 char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
-void codegen(Function *prog) {
+void codegen(Program *prog) {
   printf(".intel_syntax noprefix\n");
-  for (Function *fn = prog; fn; fn = fn->next) {
+
+  // data
+  printf(".data\n");
+
+  for (VarList *vl = prog->globals; vl; vl = vl->next) {
+    Var *var = vl->var;
+    printf("%s:\n", var->name);
+    printf("  .zero %d\n", size_of(var->type));
+  }
+
+  // text
+  printf(".text\n");
+
+  for (Function *fn = prog->fns; fn; fn = fn->next) {
     printf(".global %s\n", fn->name);
     printf("%s:\n", fn->name);
 
@@ -17,7 +30,7 @@ void codegen(Function *prog) {
 
     int i = 0;
     for (VarList *vl = fn->params; vl; vl = vl->next) {
-      LVar *var = vl->var;
+      Var *var = vl->var;
       printf("  mov [rbp-%d], %s\n", var->offset, argreg[i++]);
     }
 
@@ -35,10 +48,14 @@ void codegen(Function *prog) {
 
 void gen_lval(Node *node) {
   switch (node->ty) {
-  case ND_LVAR:
-    printf("  mov rax, rbp\n");
-    printf("  sub rax, %d\n", node->var->offset);
-    printf("  push rax\n");
+  case ND_VAR:
+    if (node->var->is_local) {
+      printf("  mov rax, rbp\n");
+      printf("  sub rax, %d\n", node->var->offset);
+      printf("  push rax\n");
+    } else {
+      printf("  push offset %s\n", node->var->name);
+    }
     return;
   case ND_DEREF:
     gen(node->lhs);
@@ -55,7 +72,7 @@ void gen(Node *node) {
     case ND_NUM:
       printf("  push %d\n", node->val);
       return;
-    case ND_LVAR:
+    case ND_VAR:
       gen_lval(node);
       if (node->type->kind != TY_ARRAY) {
         printf("  pop rax\n");

@@ -34,18 +34,19 @@ struct Type {
   int array_size;
 };
 
-typedef struct LVar LVar;
-struct LVar {
+typedef struct Var Var;
+struct Var {
   char *name;
   int len;
   Type *type;
+  int is_local;
   int offset;
 };
 
 typedef struct VarList VarList;
 struct VarList {
   struct VarList *next;
-  LVar *var;
+  Var *var;
 };
 
 enum {
@@ -58,7 +59,7 @@ enum {
   ND_LT,
   ND_LE,
   ND_ASSIGN,
-  ND_LVAR,
+  ND_VAR,
   ND_NUM,
   ND_RETURN,
   ND_EXPR_STMT,
@@ -90,7 +91,7 @@ typedef struct Node {
   struct Node *args;
 
   int val;
-  LVar *var;
+  Var *var;
   char *funcname;
 } Node;
 
@@ -103,21 +104,29 @@ typedef struct Function {
   VarList *locals;
 } Function;
 
-LVar *find_lvar(Token *tok);
-LVar *push_lvar(Token *tok, Type *ty);
+typedef struct Program {
+  VarList *globals;
+  Function *fns;
+} Program;
+
+Var *find_var(Token *tok);
+Var *push_var(Token *tok, Type *ty, int is_local);
 Node *new_node(int ty);
 Node *new_binary_node(int ty, Node *lhs, Node *rhs);
 Node *new_unary_node(int ty, Node *lhs);
 Node *new_node_num(int val);
-Node *new_node_lvar(LVar *var);
+Node *new_node_var(Var *var);
 int peek(char *op);
 int consume(char *op);
 Token *consume_ident();
 int expect_number();
 Token *expect_ident();
 int at_eof();
-Function *program();
+Type *basetype();
+Program *program();
 Function *function();
+void global_var();
+Node *declaration();
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -130,14 +139,11 @@ Node *postfix();
 Node *func_args();
 Node *term();
 
-void codegen(Function *prog);
+void codegen(Program *prog);
 void gen(Node *node);
 
 Type *int_type();
 Type *pointer_to(Type *to);
 Type *array_of(Type *base, int size);
 int size_of(Type *ty);
-void add_type(Function *prog);
-
-int expect(int line, int expected, int acutual);
-void runtest();
+void add_type(Program *prog);

@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
   }
 
   token = tokenize(argv[1]);
-  Function *prog = program();
+  Program *prog = program();
   add_type(prog);
   codegen(prog);
 

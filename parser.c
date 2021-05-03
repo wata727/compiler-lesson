@@ -6,21 +6,20 @@ VarList *globals;
 Var *find_var(Token *tok) {
   for (VarList *vl = locals; vl; vl = vl->next) {
     Var *var = vl->var;
-    if (var->len == tok->len && !memcmp(tok->input, var->name, var->len))
+    if (strlen(var->name) == tok->len && !memcmp(tok->input, var->name, tok->len))
       return var;
   }
   for (VarList *vl = globals; vl; vl = vl->next) {
     Var *var = vl->var;
-    if (var->len == tok->len && !memcmp(tok->input, var->name, var->len))
+    if (strlen(var->name) == tok->len && !memcmp(tok->input, var->name, tok->len))
       return var;
   }
   return NULL;
 }
 
-Var *push_var(Token *tok, Type *ty, int is_local) {
+Var *push_var(char *name, Type *ty, int is_local) {
   Var *var = calloc(1, sizeof(Var));
-  var->name = strndup(tok->input, tok->len);
-  var->len = tok->len;
+  var->name = name;
   var->type = ty;
   var->is_local = is_local;
 
@@ -34,6 +33,13 @@ Var *push_var(Token *tok, Type *ty, int is_local) {
     globals = vl;
   }
   return var;
+}
+
+char *new_label() {
+  static int cnt = 0;
+  char buf[20];
+  sprintf(buf, ".L.data.%d", cnt++);
+  return strndup(buf, 20);
 }
 
 Node *new_node(int ty) {
@@ -131,11 +137,11 @@ Type *read_type_suffix(Type *base) {
 
 VarList *read_func_param() {
   Type *ty = basetype();
-  Token *tok = expect_ident();
+  char *name = expect_ident();
   ty = read_type_suffix(ty);
 
   VarList *vl = calloc(1, sizeof(VarList));
-  vl->var = push_var(tok, ty, 1);
+  vl->var = push_var(name, ty, 1);
   return vl;
 }
 
@@ -161,8 +167,8 @@ Function *function() {
 
   Function *fn = calloc(1, sizeof(Function));
   basetype();
-  Token *t = expect_ident();
-  fn->name = strndup(t->input, t->len);
+  char *name = expect_ident();
+  fn->name = name;
   if (!consume("("))
     error("Function identifier must be followed by open parenthese: %s", token->input);
   fn->params = read_func_params();
@@ -185,18 +191,18 @@ Function *function() {
 
 void global_var() {
   Type *ty = basetype();
-  Token *tok = expect_ident();
+  char *name = expect_ident();
   ty = read_type_suffix(ty);
   if (!consume(";"))
-    error("Unterminated global variable declaration: %s", tok->input);
-  push_var(tok, ty, 0);
+    error("Unterminated global variable declaration: %s", token->input);
+  push_var(name, ty, 0);
 }
 
 Node *declaration() {
   Type *ty = basetype();
-  Token *tok = expect_ident();
+  char *name = expect_ident();
   ty = read_type_suffix(ty);
-  push_var(tok, ty, 1);
+  push_var(name, ty, 1);
 
   if (consume(";"))
     return new_node(ND_NULL);
@@ -420,6 +426,17 @@ Node *term() {
     Var *var = find_var(tok);
     if (!var)
       error("Undefined variable: %s", tok->input);
+    return new_node_var(var);
+  }
+
+  tok = token;
+  if (tok->ty == TK_STR) {
+    token = token->next;
+
+    Type *ty = array_of(char_type(), tok->cont_len);
+    Var *var = push_var(new_label(), ty, 0);
+    var->contents = tok->contents;
+    var->cont_len = tok->cont_len;
     return new_node_var(var);
   }
 

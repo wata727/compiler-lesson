@@ -7,6 +7,7 @@
 enum {
   TK_RESERVED,
   TK_IDENT,
+  TK_STR,
   TK_NUM,
   TK_EOF,
 };
@@ -18,6 +19,9 @@ struct Token {
   int val;
   char *input;
   int len;
+
+  char *contents;
+  char cont_len;
 };
 
 extern Token *token;
@@ -45,10 +49,13 @@ struct Type {
 typedef struct Var Var;
 struct Var {
   char *name;
-  int len;
   Type *type;
   int is_local;
+
   int offset;
+
+  char *contents;
+  char cont_len;
 };
 
 typedef struct VarList VarList;
@@ -119,7 +126,7 @@ typedef struct Program {
 } Program;
 
 Var *find_var(Token *tok);
-Var *push_var(Token *tok, Type *ty, int is_local);
+Var *push_var(char *name, Type *ty, int is_local);
 Node *new_node(int ty);
 Node *new_binary_node(int ty, Node *lhs, Node *rhs);
 Node *new_unary_node(int ty, Node *lhs);
@@ -129,7 +136,7 @@ int peek(char *op);
 int consume(char *op);
 Token *consume_ident();
 int expect_number();
-Token *expect_ident();
+char *expect_ident();
 int at_eof();
 Type *basetype();
 Program *program();

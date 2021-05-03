@@ -70,12 +70,12 @@ int expect_number() {
   return val;
 }
 
-Token *expect_ident() {
+char *expect_ident() {
   if (token->ty != TK_IDENT)
     error("expect an identifier: %s", token->input);
-  Token *t = token;
+  char *s = strndup(token->input, token->len);
   token = token->next;
-  return t;
+  return s;
 }
 
 int at_eof() {
@@ -111,6 +111,20 @@ Token *tokenize(char *p) {
       while (is_alnum(*p))
         p++;
       cur = new_token(TK_IDENT, cur, q, p - q);
+      continue;
+    }
+
+    if (*p == '"') {
+      char *q = p++;
+      while (*p && *p != '"')
+        p++;
+      if (!*p)
+        error("Missing closing double quote", "");
+      p++;
+
+      cur = new_token(TK_STR, cur, q, p - q);
+      cur->contents = strndup(q + 1, p - q -2);
+      cur->cont_len = p - q- 1;
       continue;
     }
 

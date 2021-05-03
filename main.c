@@ -1,7 +1,5 @@
 #include "9cc.h"
 
-Token *token;
-
 int align_to(int n, int align) {
   return (n + align - 1) & ~(align - 1);
 }

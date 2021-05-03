@@ -20,6 +20,8 @@ struct Token {
   int len;
 };
 
+extern Token *token;
+
 Token *new_token(int ty, Token *cur, char *input, int len);
 int startswith(char *p, char *q);
 char *starts_with_reserved(char *p);

@@ -6,6 +6,12 @@ Type *int_type() {
   return ty;
 }
 
+Type *char_type() {
+  Type *ty = calloc(1, sizeof(Type));
+  ty->kind = TY_CHAR;
+  return ty;
+}
+
 Type *pointer_to(Type *to) {
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = TY_PTR;
@@ -26,6 +32,8 @@ int size_of(Type *ty) {
   case TY_INT:
   case TY_PTR:
     return 8;
+  case TY_CHAR:
+    return 1;
   case TY_ARRAY:
     return size_of(ty->ptr_to) * ty->array_size;
   }

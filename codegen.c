@@ -1,7 +1,8 @@
 #include "9cc.h"
 
 int labelseq = 0;
-char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+char *argreg1[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
+char *argreg8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 void codegen(Program *prog) {
   printf(".intel_syntax noprefix\n");
@@ -26,12 +27,19 @@ void codegen(Program *prog) {
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
     if (fn->locals)
-      printf("  sub rsp, %d\n", fn->locals->var->offset);
+      printf("  sub rsp, %d\n", fn->stack_size);
 
     int i = 0;
     for (VarList *vl = fn->params; vl; vl = vl->next) {
       Var *var = vl->var;
-      printf("  mov [rbp-%d], %s\n", var->offset, argreg[i++]);
+      int sz = size_of(var->type);
+      if (sz == 1) {
+        printf("  mov [rbp-%d], %s\n", var->offset, argreg1[i++]);
+      } else if (sz == 8) {
+        printf("  mov [rbp-%d], %s\n", var->offset, argreg8[i++]);
+      } else {
+        error("Unexpected variable size", "");
+      }
     }
 
     // Emit code
@@ -65,6 +73,25 @@ void gen_lval(Node *node) {
   error("left value is not variable or dereference", "");
 }
 
+void load(Type *ty) {
+  printf("  pop rax\n");
+  if (size_of(ty) == 1)
+    printf("  movsx rax, byte ptr [rax]\n");
+  else
+    printf("  mov rax, [rax]\n");
+  printf("  push rax\n");
+}
+
+void store(Type *ty) {
+  printf("  pop rdi\n");
+  printf("  pop rax\n");
+  if (size_of(ty) == 1)
+    printf("  mov [rax], dil\n");
+  else
+    printf("  mov [rax], rdi\n");
+  printf("  push rdi\n");
+}
+
 void gen(Node *node) {
   int seq;
 
@@ -74,22 +101,15 @@ void gen(Node *node) {
       return;
     case ND_VAR:
       gen_lval(node);
-      if (node->type->kind != TY_ARRAY) {
-        printf("  pop rax\n");
-        printf("  mov rax, [rax]\n");
-        printf("  push rax\n");
-      }
+      if (node->type->kind != TY_ARRAY)
+        load(node->type);
       return;
     case ND_ASSIGN:
       if (node->lhs->type->kind == TY_ARRAY)
         error("not an lvalue", "");
       gen_lval(node->lhs);
       gen(node->rhs);
-
-      printf("  pop rdi\n");
-      printf("  pop rax\n");
-      printf("  mov [rax], rdi\n");
-      printf("  push rdi\n");
+      store(node->type);
       return;
     case ND_RETURN:
       gen(node->lhs);
@@ -163,7 +183,7 @@ void gen(Node *node) {
       }
 
       for (int i = nargs -1; i >= 0; i--)
-        printf("  pop %s\n", argreg[i]);
+        printf("  pop %s\n", argreg8[i]);
 
       int seq = labelseq++;
       printf("  mov rax, rsp\n");
@@ -186,11 +206,8 @@ void gen(Node *node) {
       return;
     case ND_DEREF:
       gen(node->lhs);
-      if (node->type->kind != TY_ARRAY) {
-        printf("  pop rax\n");
-        printf("  mov rax, [rax]\n");
-        printf("  push rax\n");
-      }
+      if (node->type->kind != TY_ARRAY)
+        load(node->type);
       return;
     case ND_NULL:
       return;

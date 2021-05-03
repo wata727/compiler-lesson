@@ -26,7 +26,13 @@ char *starts_with_reserved(char *p);
 Token *tokenize(char *p);
 void error(char *msg, char *input);
 
-typedef enum { TY_INT, TY_PTR, TY_ARRAY } TypeKind;
+typedef enum {
+  TY_INT,
+  TY_CHAR,
+  TY_PTR,
+  TY_ARRAY,
+} TypeKind;
+
 typedef struct Type Type;
 struct Type {
   TypeKind kind;
@@ -102,6 +108,7 @@ typedef struct Function {
 
   Node *node;
   VarList *locals;
+  int stack_size;
 } Function;
 
 typedef struct Program {
@@ -143,6 +150,7 @@ void codegen(Program *prog);
 void gen(Node *node);
 
 Type *int_type();
+Type *char_type();
 Type *pointer_to(Type *to);
 Type *array_of(Type *base, int size);
 int size_of(Type *ty);

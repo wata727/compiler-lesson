@@ -15,12 +15,20 @@ int startswith(char *p, char *q) {
   return memcmp(p, q, strlen(q)) == 0;
 }
 
+int is_alpha(char c) {
+  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_';
+}
+
+int is_alnum(char c) {
+  return is_alpha(c) || ('0' <= c && c <= '9');
+}
+
 char *starts_with_reserved(char *p) {
-  static char *kw[] = {"return", "if", "else", "while", "for", "int", "sizeof"};
+  static char *kw[] = {"return", "if", "else", "while", "for", "int", "char", "sizeof"};
 
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++) {
     int len = strlen(kw[i]);
-    if (startswith(p, kw[i]) && !isalnum(p[len]))
+    if (startswith(p, kw[i]) && !is_alnum(p[len]))
       return kw[i];
   }
 
@@ -57,9 +65,9 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (isalpha(*p)) {
+    if (is_alpha(*p)) {
       char *q = p++;
-      while (isalnum(*p))
+      while (is_alnum(*p))
         p++;
       cur = new_token(TK_IDENT, cur, q, p - q);
       continue;
@@ -109,13 +117,6 @@ Var *push_var(Token *tok, Type *ty, int is_local) {
   var->len = tok->len;
   var->type = ty;
   var->is_local = is_local;
-  if (is_local) {
-    if (locals) {
-      var->offset = locals->var->offset + size_of(ty);
-    } else {
-      var->offset = size_of(ty);
-    }
-  }
 
   VarList *vl = calloc(1, sizeof(VarList));
   vl->var = var;
@@ -239,9 +240,15 @@ Node *read_expr_stmt() {
 }
 
 Type *basetype() {
-  if (!consume("int"))
-    error("expected type: %s", token->input);
-  Type *ty = int_type();
+  Type *ty;
+  if (consume("char")) {
+    ty = char_type();
+  } else {
+    if (!consume("int"))
+      error("expected type: %s", token->input);
+    ty = int_type();
+  }
+
   while(consume("*"))
     ty = pointer_to(ty);
   return ty;
@@ -331,6 +338,10 @@ Node *declaration() {
   error("Unterminated declaration: %s", token->input);
 }
 
+int is_typename() {
+  return peek("int") || peek("char");
+}
+
 Node *stmt() {
   if (consume("return")) {
     Node *node = new_unary_node(ND_RETURN, expr());
@@ -401,7 +412,7 @@ Node *stmt() {
     return node;
   }
 
-  if (peek("int"))
+  if (is_typename())
     return declaration();
 
   Node *node = read_expr_stmt();

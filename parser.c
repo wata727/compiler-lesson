@@ -389,6 +389,24 @@ Node *postfix() {
   return node;
 }
 
+Node *stmt_expr() {
+  Node *node = new_node(ND_STMT_EXPR);
+  node->body = stmt();
+  Node *cur = node->body;
+
+  while (!consume("}")) {
+    cur->next = stmt();
+    cur = cur->next;
+  }
+  if (!consume(")"))
+    error_at("Missing closing parenthesis", token->input);
+
+  if (cur->ty != ND_EXPR_STMT)
+    error_at("stmt expr returning void is not supported", token->input);
+  *cur = *cur->lhs;
+  return node;
+}
+
 Node *func_args() {
   if (consume(")"))
     return NULL;
@@ -407,6 +425,9 @@ Node *func_args() {
 
 Node *term() {
   if (consume("(")) {
+    if (consume("{"))
+      return stmt_expr();
+
     Node *node = add();
     if (!consume(")")) {
       error_at("Missing closing parenthesis", token->input);

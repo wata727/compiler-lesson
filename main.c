@@ -1,5 +1,22 @@
 #include "9cc.h"
 
+char *read_file(char *path) {
+  FILE *fp = fopen(path, "r");
+  if (!fp)
+    error("cannot open file: %s", path);
+
+  int filemax = 10 * 1024 * 1024;
+  char *buf = malloc(filemax);
+  int size = fread(buf, 1, filemax - 2, fp);
+  if (!feof(fp))
+    error("%s: file too large", path);
+
+  if (size == 0 || buf[size - 1] != '\n')
+    buf[size++] = '\n';
+  buf[size] = '\0';
+  return buf;
+}
+
 int align_to(int n, int align) {
   return (n + align - 1) & ~(align - 1);
 }
@@ -10,7 +27,10 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  token = tokenize(argv[1]);
+  filename = argv[1];
+  user_input = read_file(filename);
+
+  token = tokenize(user_input);
   Program *prog = program();
   add_type(prog);
 

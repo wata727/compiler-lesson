@@ -14,7 +14,7 @@ try() {
   expected="$1"
   input="$2"
 
-  ./9cc "$input" > tmp.s
+  ./9cc <(echo "$input") > tmp.s
   gcc -o tmp tmp.s tmp2.o
   ./tmp
   actual="$?"
@@ -31,7 +31,7 @@ assert() {
   expected="$1"
   input="$2"
 
-  ./9cc "$input" > tmp.s
+  ./9cc <(echo "$input") > tmp.s
   gcc -static -o tmp tmp.s tmp2.o
   ./tmp
   actual="$?"

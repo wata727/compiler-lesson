@@ -24,6 +24,8 @@ struct Token {
   char cont_len;
 };
 
+extern char *filename;
+extern char *user_input;
 extern Token *token;
 
 Token *new_token(int ty, Token *cur, char *input, int len);
@@ -31,6 +33,7 @@ int startswith(char *p, char *q);
 char *starts_with_reserved(char *p);
 Token *tokenize(char *p);
 void error(char *msg, char *input);
+void error_at(char *msg, char *loc);
 
 typedef enum {
   TY_INT,

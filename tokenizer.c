@@ -1,5 +1,7 @@
 #include "9cc.h"
 
+char *filename;
+char *user_input;
 Token *token;
 
 Token *new_token(int ty, Token *cur, char *input, int len) {
@@ -64,7 +66,7 @@ Token *consume_ident() {
 
 int expect_number() {
   if (token->ty != TK_NUM)
-    error("expect a number: %s", token->input);
+    error_at("expect a number", token->input);
   int val = token->val;
   token = token->next;
   return val;
@@ -72,7 +74,7 @@ int expect_number() {
 
 char *expect_ident() {
   if (token->ty != TK_IDENT)
-    error("expect an identifier: %s", token->input);
+    error_at("expect an identifier", token->input);
   char *s = strndup(token->input, token->len);
   token = token->next;
   return s;
@@ -119,7 +121,7 @@ Token *tokenize(char *p) {
       while (*p && *p != '"')
         p++;
       if (!*p)
-        error("Missing closing double quote", "");
+        error_at("Missing closing double quote", cur->input);
       p++;
 
       cur = new_token(TK_STR, cur, q, p - q);
@@ -146,5 +148,28 @@ Token *tokenize(char *p) {
 
 void error(char *msg, char *input) {
   fprintf(stderr, msg, input);
+  exit(1);
+}
+
+void error_at(char *msg, char *loc) {
+  char *line = loc;
+  while (user_input < line && line[-1] != '\n')
+    line--;
+
+  char *end = loc;
+  while (*end != '\n')
+    end++;
+
+  int line_num = 1;
+  for (char *p = user_input; p < line; p++)
+    if (*p == '\n')
+      line_num++;
+
+  int indent = fprintf(stderr, "%s:%d: ", filename, line_num);
+  fprintf(stderr, "%.*s\n", (int)(end - line), line);
+
+  int pos = loc - line + indent;
+  fprintf(stderr, "%*s", pos, "");
+  fprintf(stderr, "^ %s\n", msg);
   exit(1);
 }

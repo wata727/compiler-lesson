@@ -116,7 +116,7 @@ Type *basetype() {
     ty = char_type();
   } else {
     if (!consume("int"))
-      error("expected type: %s", token->input);
+      error_at("expected type", token->input);
     ty = int_type();
   }
 
@@ -130,7 +130,7 @@ Type *read_type_suffix(Type *base) {
     return base;
   int sz = expect_number();
   if (!consume("]"))
-    error("number is expected for array size", "");
+    error_at("number is expected for array size", token->input);
   base = read_type_suffix(base);
   return array_of(base, sz);
 }
@@ -154,7 +154,7 @@ VarList *read_func_params() {
 
   while (!consume(")")) {
     if (!consume(","))
-      error("Function arguments must be split by comma: %s", token->input);
+      error_at("Function arguments must be split by comma", token->input);
     cur->next = read_func_param();
     cur = cur->next;
   }
@@ -170,10 +170,10 @@ Function *function() {
   char *name = expect_ident();
   fn->name = name;
   if (!consume("("))
-    error("Function identifier must be followed by open parenthese: %s", token->input);
+    error_at("Function identifier must be followed by open parenthese", token->input);
   fn->params = read_func_params();
   if (!consume("{"))
-    error("Function must start from block: %s", token->input);
+    error_at("Function must start from block", token->input);
 
   Node head;
   head.next = NULL;
@@ -194,7 +194,7 @@ void global_var() {
   char *name = expect_ident();
   ty = read_type_suffix(ty);
   if (!consume(";"))
-    error("Unterminated global variable declaration: %s", token->input);
+    error_at("Unterminated global variable declaration", token->input);
   push_var(name, ty, 0);
 }
 
@@ -206,7 +206,7 @@ Node *declaration() {
 
   if (consume(";"))
     return new_node(ND_NULL);
-  error("Unterminated declaration: %s", token->input);
+  error_at("Unterminated declaration", token->input);
 }
 
 int is_typename() {
@@ -217,17 +217,17 @@ Node *stmt() {
   if (consume("return")) {
     Node *node = new_unary_node(ND_RETURN, expr());
     if (!consume(";"))
-      error("Unterminated statement: %s", token->input);
+      error_at("Unterminated statement", token->input);
     return node;
   }
 
   if (consume("if")) {
     Node *node = new_node(ND_IF);
     if (!consume("("))
-      error("Expected open parenthese: %s", token->input);
+      error_at("Expected open parenthese", token->input);
     node->cond = expr();
     if (!consume(")"))
-      error("Expected close parenthese: %s", token->input);
+      error_at("Expected close parenthese", token->input);
     node->then = stmt();
     if (consume("else"))
       node->els = stmt();
@@ -237,10 +237,10 @@ Node *stmt() {
   if (consume("while")) {
     Node *node = new_node(ND_WHILE);
     if (!consume("("))
-      error("Expected open parenthese: %s", token->input);
+      error_at("Expected open parenthese", token->input);
     node->cond = expr();
     if (!consume(")"))
-      error("Expected close parenthese: %s", token->input);
+      error_at("Expected close parenthese", token->input);
     node->then = stmt();
     return node;
   }
@@ -248,21 +248,21 @@ Node *stmt() {
   if (consume("for")) {
     Node *node = new_node(ND_FOR);
     if (!consume("("))
-      error("Expected open parenthese: %s", token->input);
+      error_at("Expected open parenthese", token->input);
     if (!consume(";")) {
       node->init = read_expr_stmt();
       if (!consume(";"))
-        error("Unterminated statement: %s", token->input);
+        error_at("Unterminated statement", token->input);
     }
     if (!consume(";")) {
       node->cond = expr();
       if (!consume(";"))
-        error("Unterminated statement: %s", token->input);
+        error_at("Unterminated statement", token->input);
     }
     if (!consume(")")) {
       node->inc = read_expr_stmt();
       if (!consume(")"))
-        error("Expected close parenthese: %s", token->input);
+        error_at("Expected close parenthese", token->input);
     }
     node->then = stmt();
     return node;
@@ -288,7 +288,7 @@ Node *stmt() {
 
   Node *node = read_expr_stmt();
   if (!consume(";")) 
-    error("Unterminated statement: %s", token->input);
+    error_at("Unterminated statement", token->input);
   return node;
 }
 
@@ -383,7 +383,7 @@ Node *postfix() {
   while (consume("[")) {
     Node *exp = new_binary_node(ND_ADD, node, expr());
     if (!consume("]"))
-      error("Missing closing bracket: %s", token->input);
+      error_at("Missing closing bracket", token->input);
     node = new_unary_node(ND_DEREF, exp);
   }
   return node;
@@ -400,7 +400,7 @@ Node *func_args() {
     cur = cur->next;
   }
   if (!consume(")")) {
-    error("Missing closing parenthesis: %s", token->input);
+    error_at("Missing closing parenthesis", token->input);
   }
   return head;
 }
@@ -409,7 +409,7 @@ Node *term() {
   if (consume("(")) {
     Node *node = add();
     if (!consume(")")) {
-      error("Missing closing parenthesis: %s", token->input);
+      error_at("Missing closing parenthesis", token->input);
     }
     return node;
   }
@@ -425,7 +425,7 @@ Node *term() {
 
     Var *var = find_var(tok);
     if (!var)
-      error("Undefined variable: %s", tok->input);
+      error_at("Undefined variable", tok->input);
     return new_node_var(var);
   }
 

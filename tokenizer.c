@@ -95,6 +95,21 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (strncmp(p, "//", 2) == 0) {
+      p += 2;
+      while (*p != '\n')
+        p++;
+      continue;
+    }
+
+    if (strncmp(p, "/*", 2) == 0) {
+      char *q = strstr(p + 2, "*/");
+      if (!q)
+        error_at("Missing closing comment", cur->input);
+      p = q + 2;
+      continue;
+    }
+
     char *kw = starts_with_reserved(p);
     if (kw) {
       int len = strlen(kw);

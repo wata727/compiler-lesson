@@ -166,6 +166,8 @@ int main() {
   assert(107, "\k"[0], "\"\\k\"[0]");
   assert(108, "\l"[0], "\"\\l\"[0]");
 
+  assert(1, ({ int a=1; a; }), "int a=1; a;");
+
   printf("OK\n");
   return 0;
 }

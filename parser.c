@@ -202,11 +202,20 @@ Node *declaration() {
   Type *ty = basetype();
   char *name = expect_ident();
   ty = read_type_suffix(ty);
-  push_var(name, ty, 1);
+  Var *var = push_var(name, ty, 1);
 
   if (consume(";"))
     return new_node(ND_NULL);
-  error_at("Unterminated declaration", token->input);
+
+  if (!consume("="))
+    error_at("Unterminated declaration", token->input);
+  Node *lhs = new_node_var(var);
+  Node *rhs = expr();
+  if (!consume(";"))
+    error_at("Unterminated declaration", token->input);
+
+  Node *node = new_binary_node(ND_ASSIGN, lhs, rhs);
+  return new_unary_node(ND_EXPR_STMT, node);
 }
 
 int is_typename() {

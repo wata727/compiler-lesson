@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
@@ -5,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+typedef struct Node Node;
 
 //
 // tokenize.c
@@ -37,6 +40,20 @@ Token *tokenize(char *input);
 // parse.c
 //
 
+typedef struct Obj Obj;
+struct Obj {
+  Obj *next;
+  char *name;
+  int offset;
+};
+
+typedef struct Function Function;
+struct Function {
+  Node *body;
+  Obj *locals;
+  int stack_size;
+};
+
 typedef enum {
   ND_ADD,
   ND_SUB,
@@ -53,20 +70,19 @@ typedef enum {
   ND_NUM,
 } NodeKind;
 
-typedef struct Node Node;
 struct Node {
   NodeKind kind;
   Node *next;
   Node *lhs;
   Node *rhs;
-  char name;
+  Obj *var;
   int val;
 };
 
-Node *parse(Token *tok);
+Function *parse(Token *tok);
 
 //
 // codegen.c
 //
 
-void codegen(Node *node);
+void codegen(Function *prog);

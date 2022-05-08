@@ -102,6 +102,7 @@ struct Node {
 
   // Function call
   char *funcname;
+  Node *args;
 
   Obj *var;
   int val;

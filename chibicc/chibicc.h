@@ -18,6 +18,7 @@ typedef enum {
   TK_IDENT,
   TK_PUNCT,
   TK_KEYWORD,
+  TK_STR,
   TK_NUM,
   TK_EOF,
 } TokenKind;
@@ -29,6 +30,8 @@ struct Token {
   int val;
   char *loc;
   int len;
+  Type *ty;
+  char *str;
 };
 
 void error(char *fmt, ...);
@@ -55,6 +58,9 @@ struct Obj {
 
   // Global variable or function
   bool is_function;
+
+  // Global variable
+  char *init_data;
 
   // Function
   Obj *params;

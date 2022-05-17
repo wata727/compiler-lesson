@@ -94,6 +94,7 @@ typedef enum {
   ND_BLOCK,
   ND_FUNCALL,
   ND_EXPR_STMT,
+  ND_STMT_EXPR,
   ND_VAR,
   ND_NUM,
 } NodeKind;
@@ -114,7 +115,7 @@ struct Node {
   Node *init;
   Node *inc;
 
-  // Block
+  // Block or statement expression
   Node *body;
 
   // Function call

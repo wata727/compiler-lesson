@@ -1,7 +1,22 @@
 #include "chibicc.h"
 
+typedef struct VarScope VarScope;
+struct VarScope {
+  VarScope *next;
+  char *name;
+  Obj *var;
+};
+
+typedef struct Scope Scope;
+struct Scope {
+  Scope *next;
+  VarScope *vars;
+};
+
 static Obj *locals;
 static Obj *globals;
+
+static Scope *scope = &(Scope){};
 
 static Type *declspec(Token **rest, Token *tok);
 static Type *declarator(Token **rest, Token *tok, Type *ty);
@@ -19,15 +34,21 @@ static Node *postfix(Token **rest, Token *tok);
 static Node *unary(Token **rest, Token *tok);
 static Node *primary(Token **rest, Token *tok);
 
+static void enter_scope(void) {
+  Scope *sc = calloc(1, sizeof(Scope));
+  sc->next = scope;
+  scope = sc;
+}
+
+static void leave_scope(void) {
+  scope = scope->next;
+}
+
 static Obj *find_var(Token *tok) {
-  for (Obj *var = locals; var; var = var->next)
-    if (strlen(var->name) == tok->len && !strncmp(tok->loc, var->name, tok->len))
-      return var;
-
-  for (Obj *var = globals; var; var = var->next)
-    if (strlen(var->name) == tok->len && !strncmp(tok->loc, var->name, tok->len))
-      return var;
-
+  for (Scope *sc = scope; sc; sc = sc->next)
+    for (VarScope *sc2 = sc->vars; sc2; sc2 = sc2->next)
+      if (equal(tok, sc2->name))
+        return sc2->var;
   return NULL;
 }
 
@@ -63,10 +84,20 @@ static Node *new_var_node(Obj *var, Token *tok) {
   return node;
 }
 
+static VarScope *push_scope(char *name, Obj *var) {
+  VarScope *sc = calloc(1, sizeof(VarScope));
+  sc->name = name;
+  sc->var = var;
+  sc->next = scope->vars;
+  scope->vars = sc;
+  return sc;
+}
+
 static Obj *new_var(char *name, Type *ty) {
   Obj *var = calloc(1, sizeof(Obj));
   var->name = name;
   var->ty = ty;
+  push_scope(name, var);
   return var;
 }
 
@@ -269,9 +300,11 @@ static Node *stmt(Token **rest, Token *tok) {
 // compound-stmt = (declaration | stmt)* "}"
 static Node *compound_stmt(Token **rest, Token *tok) {
   Node *node = new_node(ND_BLOCK, tok);
-  
   Node head = {};
   Node *cur = &head;
+
+  enter_scope();
+
   while (!equal(tok, "}")) {
     if (is_typename(tok))
       cur = cur->next = declaration(&tok, tok);
@@ -279,6 +312,8 @@ static Node *compound_stmt(Token **rest, Token *tok) {
       cur = cur->next = stmt(&tok, tok);
     add_type(cur);
   }
+
+  leave_scope();
 
   node->body = head.next;
   *rest = tok->next;
@@ -585,12 +620,14 @@ static Token *function(Token *tok, Type *basety) {
   fn->is_function = true;
 
   locals = NULL;
+  enter_scope();
   create_param_lvars(ty->params);
   fn->params = locals;
 
   tok = skip(tok, "{");
   fn->body = compound_stmt(&tok, tok);
   fn->locals = locals;
+  leave_scope();
   return tok;
 }
 

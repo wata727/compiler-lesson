@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 tmp=`mktemp -d /tmp/chibicc-test-XXXXXX`
 trap 'rm -r $tmp' INT TERM HUP EXIT

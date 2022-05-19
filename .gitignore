@@ -1,6 +1,8 @@
-*~
-*.o
+**/*~
+**/*.o
+**/*.s
 tmp*
 9cc
 chibicc/chibicc
+chibicc/test/*.exe
 tests/input.c

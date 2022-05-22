@@ -3,6 +3,5 @@
 **/*.s
 tmp*
 9cc/9cc
-chibicc/chibicc
-chibicc/test/*.exe
-tests/input.c
+chibicc
+test/*.exe

@@ -32,7 +32,7 @@ static void pop(char *arg) {
   depth--;
 }
 
-static int align_to(int n, int align) {
+int align_to(int n, int align) {
   return (n + align - 1) / align * align;
 }
 

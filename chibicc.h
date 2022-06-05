@@ -107,6 +107,7 @@ typedef enum {
   ND_STMT_EXPR,
   ND_VAR,
   ND_NUM,
+  ND_CAST,
 } NodeKind;
 
 struct Node {

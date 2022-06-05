@@ -68,9 +68,9 @@ static void load(Type *ty) {
     return;
 
   if (ty->size == 1)
-    println("  movsbq (%%rax), %%rax");
+    println("  movsbl (%%rax), %%eax");
   else if (ty->size == 2)
-    println("  movswq (%%rax), %%rax");
+    println("  movswl (%%rax), %%eax");
   else if (ty->size == 4)
     println("  movsxd (%%rax), %%rax");
   else

@@ -31,6 +31,8 @@ static Obj *globals;
 
 static Scope *scope = &(Scope){};
 
+static Obj *current_fn;
+
 static bool is_typename(Token *tok);
 static Type *declspec(Token **rest, Token *tok, VarAttr *attr);
 static Type *declarator(Token **rest, Token *tok, Type *ty);
@@ -423,8 +425,11 @@ static bool is_typename(Token *tok) {
 static Node *stmt(Token **rest, Token *tok) {
   if (equal(tok, "return")) {
     Node *node = new_node(ND_RETURN, tok);
-    node->lhs = expr(&tok, tok->next);
+    Node *exp = expr(&tok, tok->next);
     *rest = skip(tok, ";");
+
+    add_type(exp);
+    node->lhs = new_cast(exp, current_fn->ty->return_ty);
     return node;
   }
 
@@ -976,6 +981,7 @@ static Token *function(Token *tok, Type *basety) {
   if (!fn->is_definition)
     return tok;
 
+  current_fn = fn;
   locals = NULL;
   enter_scope();
   create_param_lvars(ty->params);

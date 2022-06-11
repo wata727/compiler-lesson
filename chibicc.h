@@ -200,6 +200,7 @@ struct Type {
 struct Member {
   Member *next;
   Type *ty;
+  Token *tok;
   Token *name;
   int offset;
 };

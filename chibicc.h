@@ -101,6 +101,7 @@ typedef enum {
   ND_ADDR,
   ND_DEREF,
   ND_NOT,
+  ND_BITNOT,
   ND_RETURN,
   ND_IF,
   ND_FOR,

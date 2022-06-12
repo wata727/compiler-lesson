@@ -112,6 +112,8 @@ typedef enum {
   ND_IF,
   ND_FOR,
   ND_BLOCK,
+  ND_GOTO,
+  ND_LABEL,
   ND_FUNCALL,
   ND_EXPR_STMT,
   ND_STMT_EXPR,
@@ -146,6 +148,11 @@ struct Node {
   char *funcname;
   Type *func_ty;
   Node *args;
+
+  // Goto or labeled statement
+  char *label;
+  char *unique_label;
+  Node *goto_next;
 
   Obj *var;
   int64_t val;

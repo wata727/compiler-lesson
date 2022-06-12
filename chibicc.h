@@ -102,6 +102,7 @@ typedef enum {
   ND_LT,
   ND_LE,
   ND_ASSIGN,
+  ND_COND,
   ND_COMMA,
   ND_MEMBER,
   ND_ADDR,

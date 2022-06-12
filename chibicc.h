@@ -111,6 +111,8 @@ typedef enum {
   ND_RETURN,
   ND_IF,
   ND_FOR,
+  ND_SWITCH,
+  ND_CASE,
   ND_BLOCK,
   ND_GOTO,
   ND_LABEL,
@@ -158,7 +160,14 @@ struct Node {
   char *unique_label;
   Node *goto_next;
 
+  // Swicth-cases
+  Node *case_next;
+  Node *default_case;
+
+  // Variable
   Obj *var;
+
+  // Numeric literal
   int64_t val;
 };
 

@@ -149,8 +149,9 @@ struct Node {
   Type *func_ty;
   Node *args;
 
-  // "break" label
+  // "break" and "continue" labels
   char *brk_label;
+  char *cont_label;
 
   // Goto or labeled statement
   char *label;

@@ -993,26 +993,43 @@ static Type *struct_union_decl(Token **rest, Token *tok) {
   }
 
   if (tag && !equal(tok, "{")) {
-    Type *ty = find_tag(tag);
-    if (!ty)
-      error_tok(tag, "unknown struct type");
     *rest = tok;
+
+    Type *ty = find_tag(tag);
+    if (ty)
+      return ty;
+
+    ty = struct_type();
+    ty->size = -1;
+    push_tag_scope(tag, ty);
     return ty;
   }
 
-  Type *ty = calloc(1, sizeof(Type));
-  ty->kind = TY_STRUCT;
-  struct_members(rest, tok->next, ty);
-  ty->align = 1;
+  tok = skip(tok, "{");
 
-  if (tag)
+  Type *ty = struct_type();
+  struct_members(rest, tok, ty);
+
+  if (tag) {
+    for (TagScope *sc = scope->tags; sc; sc = sc->next) {
+      if (equal(tag, sc->name)) {
+        *sc->ty = *ty;
+        return sc->ty;
+      }
+    }
+
     push_tag_scope(tag, ty);
+  }
+
   return ty;
 }
 
 static Type *struct_decl(Token **rest, Token *tok) {
   Type *ty = struct_union_decl(rest, tok);
   ty->kind == TY_STRUCT;
+
+  if (ty->size < 0)
+    return ty;
 
   int offset = 0;
   for (Member *mem = ty->members; mem; mem = mem->next) {
@@ -1030,6 +1047,9 @@ static Type *struct_decl(Token **rest, Token *tok) {
 static Type *union_decl(Token **rest, Token *tok) {
   Type *ty = struct_union_decl(rest, tok);
   ty->kind == TY_UNION;
+
+  if (ty->size < 0)
+    return ty;
 
   for (Member *mem = ty->members; mem; mem = mem->next) {
     if (ty->align < mem->ty->align)

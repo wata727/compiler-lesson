@@ -126,6 +126,7 @@ typedef enum {
   ND_VAR,
   ND_NUM,
   ND_CAST,
+  ND_MEMZERO,
 } NodeKind;
 
 struct Node {

@@ -713,6 +713,12 @@ static void initializer2(Token **rest, Token *tok, Initializer *init) {
     return;
   }
 
+  if (equal(tok, "{")) {
+    initializer2(&tok, tok->next, init);
+    *rest = skip(tok, "}");
+    return;
+  }
+
   init->expr = assign(rest, tok);
 }
 

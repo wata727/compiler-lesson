@@ -70,6 +70,7 @@ struct Obj {
   char *name;
   Type *ty;
   bool is_local; // local or global/function
+  int align;
 
   // Local variable
   int offset;
@@ -242,6 +243,7 @@ struct Member {
   Token *tok;
   Token *name;
   int idx;
+  int align;
   int offset;
 };
 

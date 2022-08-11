@@ -129,6 +129,7 @@ typedef enum {
   ND_RETURN,
   ND_IF,
   ND_FOR,
+  ND_DO,
   ND_SWITCH,
   ND_CASE,
   ND_BLOCK,

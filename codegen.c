@@ -269,6 +269,18 @@ static void gen_expr(Node *node) {
       println("  call %s", node->funcname);
       println("  add $8, %%rsp");
     }
+
+    switch (node->ty->kind) {
+    case TY_BOOL:
+      println("  movzx %%al, %%eax");
+      return;
+    case TY_CHAR:
+      println("  movsbl %%al, %%eax");
+      return;
+    case TY_SHORT:
+      println("  movswl %%ax, %%eax");
+      return;
+    }
     return;
   }
   }

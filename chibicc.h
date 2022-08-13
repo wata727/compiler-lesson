@@ -218,6 +218,7 @@ struct Type {
   TypeKind kind;
   int size;
   int align;
+  bool is_unsigned;
 
   // Pointer-to or array-of type
   Type *base;
@@ -257,6 +258,11 @@ extern Type *ty_char;
 extern Type *ty_short;
 extern Type *ty_int;
 extern Type *ty_long;
+
+extern Type *ty_uchar;
+extern Type *ty_ushort;
+extern Type *ty_uint;
+extern Type *ty_ulong;
 
 bool is_integer(Type *ty);
 Type *copy_type(Type *ty);

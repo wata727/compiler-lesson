@@ -69,6 +69,7 @@ struct Obj {
   Obj *next;
   char *name;
   Type *ty;
+  Token *tok;
   bool is_local; // local or global/function
   int align;
 
@@ -225,6 +226,7 @@ struct Type {
 
   // Declaration
   Token *name;
+  Token *name_pos;
 
   // Array
   int array_len;

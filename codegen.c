@@ -34,6 +34,18 @@ static void pop(char *arg) {
   depth--;
 }
 
+static void pushf(void) {
+  println("  sub $8, %%rsp");
+  println("  movsd %%xmm0, (%%rsp)");
+  depth++;
+}
+
+static void popf(char *arg) {
+  println("  movsd (%%rsp), %s", arg);
+  println("  add $8, %%rsp");
+  depth--;
+}
+
 int align_to(int n, int align) {
   return (n + align - 1) / align * align;
 }
@@ -375,6 +387,43 @@ static void gen_expr(Node *node) {
     }
     return;
   }
+  }
+
+  if (is_flonum(node->lhs->ty)) {
+    gen_expr(node->rhs);
+    pushf();
+    gen_expr(node->lhs);
+    popf("%xmm1");
+
+    char *sz = (node->lhs->ty->kind == TY_FLOAT) ? "ss" : "sd";
+
+    switch (node->kind) {
+    case ND_EQ:
+    case ND_NE:
+    case ND_LT:
+    case ND_LE:
+      println("  ucomi%s %%xmm0, %%xmm1", sz);
+
+      if (node->kind == ND_EQ) {
+        println("  sete %%al");
+        println("  setnp %%dl");
+        println("  and %%dl, %%al");
+      } else if (node->kind == ND_NE) {
+        println("  setne %%al");
+        println("  setp %%dl");
+        println("  or %%dl, %%al");
+      } else if (node->kind == ND_LT) {
+        println("  seta %%al");
+      } else {
+        println("  setae %%al");
+      }
+
+      println("  and $1, %%al");
+      println("  movzb %%al, %%rax");
+      return;
+    }
+
+    error_tok(node->tok, "invalid expression");
   }
 
   gen_expr(node->rhs);

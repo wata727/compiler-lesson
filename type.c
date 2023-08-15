@@ -33,6 +33,10 @@ bool is_flonum(Type *ty) {
   return ty->kind == TY_FLOAT || ty->kind == TY_DOUBLE;
 }
 
+bool is_numeric(Type *ty) {
+  return is_integer(ty) || is_flonum(ty);
+}
+
 Type *pointer_to(Type *base) {
   Type *ty = new_type(TY_PTR, 8, 8);
   ty->base = base;

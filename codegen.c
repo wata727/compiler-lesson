@@ -40,8 +40,8 @@ static void pushf(void) {
   depth++;
 }
 
-static void popf(char *arg) {
-  println("  movsd (%%rsp), %s", arg);
+static void popf(int reg) {
+  println("  movsd (%%rsp), %%xmm%d", reg);
   println("  add $8, %%rsp");
   depth--;
 }
@@ -240,6 +240,18 @@ static void cast(Type *from, Type *to) {
     println("  %s", cast_table[t1][t2]);
 }
 
+static void push_args(Node *args) {
+  if (args) {
+    push_args(args->next);
+
+    gen_expr(args);
+    if (is_flonum(args->ty))
+      pushf();
+    else
+      push();
+  }
+}
+
 static void gen_expr(Node *node) {
   println("  .loc 1 %d", node->tok->line_no);
 
@@ -375,17 +387,15 @@ static void gen_expr(Node *node) {
     return;
   }
   case ND_FUNCALL: {
-    int nargs = 0;
+    push_args(node->args);
+
+    int gp = 0, fp = 0;
     for (Node *arg = node->args; arg; arg = arg->next) {
-      gen_expr(arg);
-      push();
-      nargs++;
+      if (is_flonum(arg->ty))
+        popf(fp++);
+      else
+        pop(argreg64[gp++]);
     }
-
-    for (int i = nargs - 1; i >= 0; i--)
-      pop(argreg64[i]);
-
-    println("  mov $0, %%rax");
 
     if (depth % 2 == 0) {
       println("  call %s", node->funcname);
@@ -420,7 +430,7 @@ static void gen_expr(Node *node) {
     gen_expr(node->rhs);
     pushf();
     gen_expr(node->lhs);
-    popf("%xmm1");
+    popf(1);
 
     char *sz = (node->lhs->ty->kind == TY_FLOAT) ? "ss" : "sd";
 

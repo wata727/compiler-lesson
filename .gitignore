@@ -5,3 +5,4 @@ tmp*
 9cc/9cc
 chibicc
 test/*.exe
+/stage2

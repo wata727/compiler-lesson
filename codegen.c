@@ -55,9 +55,18 @@ static void gen_addr(Node *node) {
   case ND_VAR:
     if (node->var->is_local) {
       println("  lea %d(%%rbp), %%rax", node->var->offset);
-    } else {
-      println("  lea %s(%%rip), %%rax", node->var->name);
+      return;
     }
+
+    if (node->ty->kind == TY_FUNC) {
+      if (node->var->is_definition)
+        println("  lea %s(%%rip), %%rax", node->var->name);
+      else
+        println("  mov %s@GOTPCREL(%%rip), %%rax", node->var->name);
+      return;
+    }
+
+    println("  lea %s(%%rip), %%rax", node->var->name);
     return;
   case ND_DEREF:
     gen_expr(node->lhs);
@@ -80,6 +89,7 @@ static void load(Type *ty) {
   case TY_ARRAY:
   case TY_STRUCT:
   case TY_UNION:
+  case TY_FUNC:
     return;
   case TY_FLOAT:
     println("  movss (%%rax), %%xmm0");
@@ -388,6 +398,7 @@ static void gen_expr(Node *node) {
   }
   case ND_FUNCALL: {
     push_args(node->args);
+    gen_expr(node->lhs);
 
     int gp = 0, fp = 0;
     for (Node *arg = node->args; arg; arg = arg->next) {
@@ -398,10 +409,10 @@ static void gen_expr(Node *node) {
     }
 
     if (depth % 2 == 0) {
-      println("  call %s", node->funcname);
+      println("  call *%%rax");
     } else {
       println("  sub $8, %%rsp");
-      println("  call %s", node->funcname);
+      println("  call *%%rax");
       println("  add $8, %%rsp");
     }
 

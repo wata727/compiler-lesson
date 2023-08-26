@@ -1,9 +1,12 @@
 #include "chibicc.h"
 
+static bool opt_S;
 static bool opt_cc1;
 static bool opt_hash_hash_hash;
 static char *opt_o;
+
 static char *input_path;
+static StringArray tmpfiles;
 
 static void usage(int status) {
   fprintf(stderr, "chibicc [ -o <path> ] <file>\n");
@@ -37,6 +40,11 @@ static void parse_args(int argc, char **argv) {
       continue;
     }
 
+    if (!strcmp(argv[i], "-S")) {
+      opt_S = true;
+      continue;
+    }
+
     if (argv[i][0] == '-' && argv[i][1] != '\0')
       error("unknown argument: %s", argv[i]);
 
@@ -55,6 +63,30 @@ static FILE *open_file(char *path) {
   if (!out)
     error("cannot open output file: %s: %s", path, strerror(errno));
   return out;
+}
+
+static char *replace_extn(char *tmpl, char *extn) {
+  char *filename = basename(strdup(tmpl));
+  char *dot = strrchr(filename, '.');
+  if (dot)
+    *dot = '\0';
+  return format("%s%s", filename, extn);
+}
+
+static void cleanup(void) {
+  for (int i = 0; i < tmpfiles.len; i++)
+    unlink(tmpfiles.data[i]);
+}
+
+static char *create_tmpfile(void) {
+  char *path = strdup("/tmp/chibicc-XXXXXX");
+  int fd = mkstemp(path);
+  if (fd == -1)
+    error("mkstemp failed: %s", strerror(errno));
+  close(fd);
+
+  strarray_push(&tmpfiles, path);
+  return path;
 }
 
 static void run_subprocess(char **argv) {
@@ -77,10 +109,19 @@ static void run_subprocess(char **argv) {
     exit(1);
 }
 
-static void run_cc1(int argc, char **argv) {
+static void run_cc1(int argc, char **argv, char *input, char *output) {
   char **args = calloc(argc + 10, sizeof(char *));
   memcpy(args, argv, argc * sizeof(char *));
   args[argc++] = "-cc1";
+
+  if (input)
+    args[argc++] = input;
+
+  if (output) {
+    args[argc++] = "-o";
+    args[argc++] = output;
+  }
+
   run_subprocess(args);
 }
 
@@ -93,7 +134,13 @@ static void cc1(void) {
   codegen(prog, out);
 }
 
+static void assemble(char *input, char *output) {
+  char *cmd[] = {"as", "-c", input, "-o", output, NULL};
+  run_subprocess(cmd);
+}
+
 int main(int argc, char **argv) {
+  atexit(cleanup);
   parse_args(argc, argv);
 
   if (opt_cc1) {
@@ -101,6 +148,21 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  run_cc1(argc, argv);
+  char *output;
+  if (opt_o)
+    output = opt_o;
+  else if (opt_S)
+    output = replace_extn(input_path, ".s");
+  else
+    output = replace_extn(input_path, ".o");
+  
+  if (opt_S) {
+    run_cc1(argc, argv, input_path, output);
+    return 0;
+  }
+
+  char *tmpfile = create_tmpfile();
+  run_cc1(argc, argv, input_path, tmpfile);
+  assemble(tmpfile, output);
   return 0;
 }

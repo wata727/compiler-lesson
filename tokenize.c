@@ -2,6 +2,7 @@
 
 static char *current_filename;
 static char *current_input;
+static bool at_bol;
 
 void error(char *fmt, ...) {
   va_list ap;
@@ -74,6 +75,8 @@ static Token *new_token(TokenKind kind, char *start, char *end) {
   tok->kind = kind;
   tok->loc = start;
   tok->len = end - start;
+  tok->at_bol = at_bol;
+  at_bol = false;
   return tok;
 }
 
@@ -342,6 +345,8 @@ static Token *tokenize(char *filename, char *p) {
   Token head = {};
   Token *cur = &head;
 
+  at_bol = true;
+
   while (*p) {
     if (startswith(p, "//")) {
       p += 2;
@@ -355,6 +360,12 @@ static Token *tokenize(char *filename, char *p) {
       if (!q)
         error_at(p, "unclosed block comment");
       p = q + 2;
+      continue;
+    }
+
+    if (*p == '\n') {
+      p++;
+      at_bol = true;
       continue;
     }
 

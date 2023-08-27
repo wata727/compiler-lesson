@@ -61,6 +61,7 @@ struct Token {
   Type *ty;
   char *str;
   int line_no;
+  bool at_bol;
 };
 
 void error(char *fmt, ...);

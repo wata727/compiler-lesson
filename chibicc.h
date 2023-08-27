@@ -50,6 +50,12 @@ typedef enum {
   TK_EOF,
 } TokenKind;
 
+typedef struct {
+  char *name;
+  int file_no;
+  char *contents;
+} File;
+
 typedef struct Token Token;
 struct Token {
   TokenKind kind;
@@ -60,6 +66,7 @@ struct Token {
   int len;
   Type *ty;
   char *str;
+  File *file;
   int line_no;
   bool at_bol;
 };
@@ -71,6 +78,7 @@ bool equal(Token *tok, char *op);
 Token *skip(Token *tok, char *op); 
 bool consume(Token **rest, Token *tok, char *str);
 void convert_keywords(Token *tok);
+File **get_input_files(void);
 Token *tokenize_file(char *filename);
 
 #define unreachable() \
@@ -310,3 +318,9 @@ void add_type(Node *node);
 
 void codegen(Obj *prog, FILE *out);
 int align_to(int n, int align);
+
+//
+// main.c
+//
+
+extern char *base_file;

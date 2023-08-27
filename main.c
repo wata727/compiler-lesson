@@ -163,6 +163,7 @@ static void run_cc1(int argc, char **argv, char *input, char *output) {
 
 static void cc1(void) {
   Token *tok = tokenize_file(base_file);
+  tok = preprocess(tok);
   Obj *prog = parse(tok);
 
   FILE *out = open_file(output_file);
